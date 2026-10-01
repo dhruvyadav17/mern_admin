@@ -1,19 +1,29 @@
-const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const User = require("../models/User");
 const AppError = require("../utils/AppError");
+const {
+    USER_ROLES,
+    USER_STATUS
+} = require("../constants/userConstants");
+
+const {
+    hashPassword,
+    comparePassword
+} = require("../utils/password");
 
 const registerUser = async ({
     name,
     email,
     password
 }) => {
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail =
+        email.toLowerCase();
 
-    const existingUser = await User.findOne({
-        email: normalizedEmail
-    });
+    const existingUser =
+        await User.findOne({
+            email: normalizedEmail
+        });
 
     if (existingUser) {
         throw new AppError(
@@ -22,17 +32,15 @@ const registerUser = async ({
         );
     }
 
-    const hashedPassword = await bcrypt.hash(
-        password,
-        10
-    );
+    const hashedPassword =
+        await hashPassword(password);
 
     const user = await User.create({
         name,
         email: normalizedEmail,
         password: hashedPassword,
-        role: "user",
-        status: "active"
+        role: USER_ROLES.USER,
+        status: USER_STATUS.ACTIVE
     });
 
     return {
@@ -48,7 +56,8 @@ const loginUser = async ({
     email,
     password
 }) => {
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail =
+        email.toLowerCase();
 
     const user = await User.findOne({
         email: normalizedEmail
@@ -61,10 +70,11 @@ const loginUser = async ({
         );
     }
 
-    const isPasswordValid = await bcrypt.compare(
-        password,
-        user.password
-    );
+    const isPasswordValid =
+        await comparePassword(
+            password,
+            user.password
+        );
 
     if (!isPasswordValid) {
         throw new AppError(

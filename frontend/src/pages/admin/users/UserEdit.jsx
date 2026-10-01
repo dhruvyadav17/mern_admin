@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import api from "../../../api/axios";
+import userService from "../../../services/userService";
 import toast from "react-hot-toast";
+import LoadingSpinner from "../../../components/common/LoadingSpinner";
 
 const UserEdit = () => {
     const { id } = useParams();
@@ -25,10 +26,8 @@ const UserEdit = () => {
         setError("");
 
         try {
-            const response = await api.get(
-                `/users/${id}`
-            );
-
+            
+            const response = await userService.getUser(id);
             const user = response.data.data;
 
             setFormData({
@@ -79,10 +78,7 @@ const UserEdit = () => {
                 updateData.password = formData.password;
             }
 
-            await api.put(
-                `/users/${id}`,
-                updateData
-            );
+            await userService.updateUser(id, updateData);
             toast.success("User updated successfully");
             navigate("/admin/users");
 
@@ -98,22 +94,7 @@ const UserEdit = () => {
 
     if (loading) {
         return (
-            <div className="text-center py-5">
-
-                <div
-                    className="spinner-border text-primary"
-                    role="status"
-                >
-                    <span className="visually-hidden">
-                        Loading...
-                    </span>
-                </div>
-
-                <div className="mt-2 text-muted">
-                    Loading user...
-                </div>
-
-            </div>
+            <LoadingSpinner message="Loading user..." />
         );
     }
 

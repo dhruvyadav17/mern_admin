@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import api from "../../api/axios";
+import authService from "../../services/authService";
 import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
 
@@ -31,10 +31,8 @@ const Login = () => {
         setLoading(true);
 
         try {
-            const response = await api.post(
-                "/auth/login",
-                formData
-            );
+            const response =
+                await authService.login(formData);
 
             login(response.data.data);
             toast.success("Login successful");

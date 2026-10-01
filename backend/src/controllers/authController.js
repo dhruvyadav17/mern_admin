@@ -1,4 +1,7 @@
+
+const { successResponse } = require("../utils/response");
 const authService = require("../services/authService");
+const cookieOptions = require("../config/cookie");
 
 const register = async (req, res) => {
     const user = await authService.registerUser(
@@ -16,38 +19,20 @@ const login = async (req, res) => {
     const { token, user } =
         await authService.loginUser(req.body);
 
-    res.cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 24 * 60 * 60 * 1000
-    });
+    res.cookie("token", token, cookieOptions.authCookieOptions);
 
-    return res.status(200).json({
-        success: true,
-        message: "Login successful",
-        data: user
-    });
+    return successResponse(res, user, "Login successful");
 };
 
 const getMe = async (req, res) => {
-    return res.status(200).json({
-        success: true,
-        data: req.user
-    });
+
+    return successResponse(res, req.user, "User fetched successfully");
 };
 
 const logout = async (req, res) => {
-    res.clearCookie("token", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax"
-    });
+    res.clearCookie("token", cookieOptions.authCookieOptions);
 
-    return res.status(200).json({
-        success: true,
-        message: "Logout successful"
-    });
+    return successResponse(res, null, "Logout successful");
 };
 
 module.exports = {

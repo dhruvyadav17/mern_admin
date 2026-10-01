@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import api from "../../../api/axios";
+// import api from "../../../api/axios";
+import userService from "../../../services/userService";
 import toast from "react-hot-toast";
+import LoadingSpinner from "../../../components/common/LoadingSpinner";
 
 const UserList = () => {
     const [users, setUsers] = useState([]);
@@ -20,6 +22,8 @@ const UserList = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [deletingId, setDeletingId] = useState(null);
+    const [statusUpdatingId, setStatusUpdatingId] =
+    useState(null);
 
     const fetchUsers = async (
         page = 1,
@@ -29,12 +33,10 @@ const UserList = () => {
         setError("");
 
         try {
-            const response = await api.get("/users", {
-                params: {
-                    page,
-                    limit: 10,
-                    search: searchValue
-                }
+            const response = await userService.getUsers({
+                page,
+                limit: 10,
+                search: searchValue
             });
 
             setUsers(response.data.data);
@@ -93,28 +95,30 @@ const UserList = () => {
                 ? "inactive"
                 : "active";
 
+        setStatusUpdatingId(userId);
         setError("");
 
         try {
-            await api.patch(
-                `/users/${userId}/status`,
-                {
-                    status: newStatus
-                }
+
+            await userService.updateStatus(
+                userId,
+                newStatus
             );
             toast.success(
                 `User ${newStatus} successfully`
             );
+
             await fetchUsers(
                 pagination.page,
                 search
             );
-
         } catch (error) {
             setError(
                 error.response?.data?.message ||
                 "Failed to update user status"
             );
+        } finally {
+            setStatusUpdatingId(null);
         }
     };
 
@@ -131,9 +135,8 @@ const UserList = () => {
         setError("");
 
         try {
-            await api.delete(
-                `/users/${userId}`
-            );
+            
+            await userService.deleteUser(userId);
             toast.success("User deleted successfully");
             await fetchUsers(
                 pagination.page,
@@ -233,22 +236,7 @@ const UserList = () => {
                 <div className="card-body p-0">
 
                     {loading ? (
-                        <div className="text-center py-5">
-
-                            <div
-                                className="spinner-border text-primary"
-                                role="status"
-                            >
-                                <span className="visually-hidden">
-                                    Loading...
-                                </span>
-                            </div>
-
-                            <div className="mt-2 text-muted">
-                                Loading users...
-                            </div>
-
-                        </div>
+                        <LoadingSpinner message="Loading users..." />
                     ) : (
                         <div className="table-responsive">
 
@@ -324,8 +312,8 @@ const UserList = () => {
                                                                 type="button"
                                                                 className={`btn btn-sm ${
                                                                     user.status === "active"
-                                                                        ? "btn-outline-danger"
-                                                                        : "btn-outline-success"
+                                                                        ? "btn-success"
+                                                                        : "btn-secondary"
                                                                 }`}
                                                                 onClick={() =>
                                                                     handleStatusToggle(
@@ -333,10 +321,21 @@ const UserList = () => {
                                                                         user.status
                                                                     )
                                                                 }
+                                                                disabled={statusUpdatingId === user._id}
                                                             >
-                                                                {user.status === "active"
-                                                                    ? "Deactivate"
-                                                                    : "Activate"}
+                                                                {statusUpdatingId === user._id ? (
+                                                                    <>
+                                                                        <span
+                                                                            className="spinner-border spinner-border-sm me-1"
+                                                                            role="status"
+                                                                            aria-hidden="true"
+                                                                        ></span>
+
+                                                                        Updating...
+                                                                    </>
+                                                                ) : (
+                                                                    user.status
+                                                                )}
                                                             </button>
 
                                                         </div>
@@ -361,20 +360,21 @@ const UserList = () => {
                                                             <button
                                                                 type="button"
                                                                 className="btn btn-sm btn-outline-danger"
-                                                                onClick={() =>
-                                                                    handleDelete(
-                                                                        user._id
-                                                                    )
-                                                                }
-                                                                disabled={
-                                                                    deletingId ===
-                                                                    user._id
-                                                                }
+                                                                onClick={() => handleDelete(user._id)}
+                                                                disabled={deletingId === user._id}
                                                             >
-                                                                {deletingId ===
-                                                                user._id
-                                                                    ? "Deleting..."
-                                                                    : "Delete"}
+                                                                {deletingId === user._id ? (
+                                                                    <>
+                                                                        <span
+                                                                            className="spinner-border spinner-border-sm me-1"
+                                                                            role="status"
+                                                                            aria-hidden="true"
+                                                                        ></span>
+                                                                        Deleting...
+                                                                    </>
+                                                                ) : (
+                                                                    "Delete"
+                                                                )}
                                                             </button>
 
                                                         </div>

@@ -1,4 +1,8 @@
 const User = require("../models/User");
+const {
+    USER_ROLES,
+    USER_STATUS
+} = require("../constants/userConstants");
 
 const getDashboardStats = async () => {
     const [
@@ -11,19 +15,19 @@ const getDashboardStats = async () => {
         User.countDocuments(),
 
         User.countDocuments({
-            status: "active"
+            status: USER_STATUS.ACTIVE
         }),
 
         User.countDocuments({
-            status: "inactive"
+            status: USER_STATUS.INACTIVE
         }),
 
         User.countDocuments({
-            role: "admin"
+            role: USER_ROLES.ADMIN
         }),
 
         User.countDocuments({
-            role: "user"
+            role: USER_ROLES.USER
         })
     ]);
 

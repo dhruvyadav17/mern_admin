@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import api from "../../api/axios";
+import userService from "../../services/userService";
+import dashboardService from "../../services/dashboardService";
+import LoadingSpinner from "../../components/common/LoadingSpinner";
 
 const Dashboard = () => {
     const [stats, setStats] = useState({
@@ -22,19 +25,17 @@ const Dashboard = () => {
         setError("");
 
         try {
+            
             const [
                 statsResponse,
                 usersResponse
             ] = await Promise.all([
-                api.get("/dashboard/stats"),
+                dashboardService.getStats(),
 
-                api.get("/users", {
-                    params: {
-                        page: 1,
-                        limit: 5
-                    }
-                })
-            ]);
+                userService.getUsers({
+                    page: 1,
+                    limit: 5              
+                })]);
 
             setStats(statsResponse.data.data);
 
@@ -58,22 +59,7 @@ const Dashboard = () => {
 
     if (loading) {
         return (
-            <div className="text-center py-5">
-
-                <div
-                    className="spinner-border text-primary"
-                    role="status"
-                >
-                    <span className="visually-hidden">
-                        Loading...
-                    </span>
-                </div>
-
-                <div className="mt-2 text-muted">
-                    Loading dashboard...
-                </div>
-
-            </div>
+            <LoadingSpinner />
         );
     }
 

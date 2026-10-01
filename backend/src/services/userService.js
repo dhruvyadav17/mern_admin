@@ -1,8 +1,37 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
 
 const User = require("../models/User");
 const AppError = require("../utils/AppError");
+const {
+    USER_ROLES,
+    USER_STATUS
+} = require("../constants/userConstants");
+const {
+    hashPassword
+} = require("../utils/password");
+
+const validateUserId = (id) => {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new AppError(
+            "Invalid user ID",
+            400
+        );
+    }
+};
+
+const ensureAnotherActiveAdminExists = async () => {
+    const adminCount = await User.countDocuments({
+        role: USER_ROLES.ADMIN,
+        status: USER_STATUS.ACTIVE
+    });
+
+    if (adminCount <= 1) {
+        throw new AppError(
+            "At least one active admin is required",
+            400
+        );
+    }
+};
 
 const getUsers = async ({
     page = 1,
@@ -23,16 +52,21 @@ const getUsers = async ({
     const filter = {};
 
     if (search) {
+        const safeSearch = search.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+        );
+
         filter.$or = [
             {
                 name: {
-                    $regex: search,
+                    $regex: safeSearch,
                     $options: "i"
                 }
             },
             {
                 email: {
-                    $regex: search,
+                    $regex: safeSearch,
                     $options: "i"
                 }
             }
@@ -68,8 +102,8 @@ const createUser = async ({
     name,
     email,
     password,
-    role = "user",
-    status = "active"
+    role = USER_ROLES.USER,
+    status = USER_STATUS.ACTIVE
 }) => {
     const normalizedEmail = email.toLowerCase();
 
@@ -84,10 +118,8 @@ const createUser = async ({
         );
     }
 
-    const hashedPassword = await bcrypt.hash(
-        password,
-        10
-    );
+    const hashedPassword =
+        await hashPassword(password);
 
     const user = await User.create({
         name,
@@ -108,12 +140,7 @@ const createUser = async ({
 };
 
 const getUserById = async (id) => {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new AppError(
-            "Invalid user ID",
-            400
-        );
-    }
+    validateUserId(id);
 
     const user = await User.findById(id)
         .select("-password");
@@ -128,13 +155,12 @@ const getUserById = async (id) => {
     return user;
 };
 
-const updateUser = async (id, data) => {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new AppError(
-            "Invalid user ID",
-            400
-        );
-    }
+const updateUser = async (
+    id,
+    data,
+    currentUserId
+) => {
+    validateUserId(id);
 
     const {
         name,
@@ -150,6 +176,24 @@ const updateUser = async (id, data) => {
         throw new AppError(
             "User not found",
             404
+        );
+    }
+
+    const isSelf =
+        user._id.toString() ===
+        currentUserId.toString();
+
+    if (isSelf && role !== undefined) {
+        throw new AppError(
+            "You cannot change your own role",
+            400
+        );
+    }
+
+    if (isSelf && status !== undefined) {
+        throw new AppError(
+            "You cannot change your own status",
+            400
         );
     }
 
@@ -177,23 +221,57 @@ const updateUser = async (id, data) => {
         user.email = normalizedEmail;
     }
 
-    if (name) {
+    if (name !== undefined) {
         user.name = name;
     }
 
-    if (role) {
+    if (role !== undefined) {
+        if (
+            user.role === USER_ROLES.ADMIN &&
+            role !== USER_ROLES.ADMIN
+        ) {
+            const adminCount =
+                await User.countDocuments({
+                    role: USER_ROLES.ADMIN,
+                    status: USER_STATUS.ACTIVE
+                });
+
+            if (adminCount <= 1) {
+                throw new AppError(
+                    "At least one active admin is required",
+                    400
+                );
+            }
+        }
+
         user.role = role;
     }
 
-    if (status) {
+    if (status !== undefined) {
+        if (
+            user.role === USER_ROLES.ADMIN &&
+            status === USER_STATUS.INACTIVE
+        ) {
+            const adminCount =
+                await User.countDocuments({
+                    role: USER_ROLES.ADMIN,
+                    status: USER_STATUS.ACTIVE
+                });
+
+            if (adminCount <= 1) {
+                throw new AppError(
+                    "At least one active admin is required",
+                    400
+                );
+            }
+        }
+
         user.status = status;
     }
 
     if (password) {
-        user.password = await bcrypt.hash(
-            password,
-            10
-        );
+        user.password =
+            await hashPassword(password);
     }
 
     await user.save();
@@ -212,13 +290,7 @@ const deleteUser = async (
     id,
     currentUserId
 ) => {
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new AppError(
-            "Invalid user ID",
-            400
-        );
-    }
+    validateUserId(id);
 
     const user = await User.findById(id);
 
@@ -239,6 +311,23 @@ const deleteUser = async (
         );
     }
 
+    if (user.role === USER_ROLES.ADMIN) {
+        // const adminCount =
+        //     await User.countDocuments({
+        //         role: USER_ROLES.ADMIN,
+        //         status: USER_STATUS.ACTIVE
+        //     });
+
+        // if (adminCount <= 1) {
+        //     throw new AppError(
+        //         "At least one active admin is required",
+        //         400
+        //     );
+        // }
+        await ensureAnotherActiveAdminExists();
+
+    }
+
     await User.findByIdAndDelete(id);
 };
 
@@ -247,13 +336,7 @@ const updateUserStatus = async (
     status,
     currentUserId
 ) => {
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new AppError(
-            "Invalid user ID",
-            400
-        );
-    }
+    validateUserId(id);
 
     const user = await User.findById(id);
 
@@ -274,6 +357,24 @@ const updateUserStatus = async (
         );
     }
 
+    if (
+        user.role ===  USER_ROLES.ADMIN &&
+        status === USER_STATUS.INACTIVE
+    ) {
+        const adminCount =
+            await User.countDocuments({
+                role: USER_ROLES.ADMIN,
+                status: USER_STATUS.ACTIVE
+            });
+
+        if (adminCount <= 1) {
+            throw new AppError(
+                "At least one active admin is required",
+                400
+            );
+        }
+    }
+
     user.status = status;
 
     await user.save();
@@ -282,6 +383,7 @@ const updateUserStatus = async (
         id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role,
         status: user.status
     };
 };

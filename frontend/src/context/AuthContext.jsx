@@ -5,7 +5,7 @@ import {
     useState
 } from "react";
 
-import api from "../api/axios";
+import authService from "../services/authService";
 
 const AuthContext = createContext(null);
 
@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
 
     const fetchUser = async () => {
         try {
-            const response = await api.get("/auth/me");
+            const response = await authService.getMe();
 
             setUser(response.data.data);
         } catch (error) {
@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         try {
-            await api.post("/auth/logout");
+            await authService.logout();
         } finally {
             setUser(null);
         }

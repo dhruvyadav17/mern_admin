@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import api from "../../../api/axios";
+import userService from "../../../services/userService";
 import toast from "react-hot-toast";
+import { USER_ROLES } from "../../../constants/userConstants";
 
 const UserCreate = () => {
     const navigate = useNavigate();
@@ -11,8 +12,8 @@ const UserCreate = () => {
         name: "",
         email: "",
         password: "",
-        role: "user",
-        status: "active"
+        role: USER_ROLES.USER,
+        status: USER_STATUS.ACTIVE
     });
 
     const [error, setError] = useState("");
@@ -32,10 +33,7 @@ const UserCreate = () => {
         setLoading(true);
 
         try {
-            await api.post(
-                "/users",
-                formData
-            );
+            await userService.createUser(formData); 
             toast.success("User created successfully");
             navigate("/admin/users");
 
@@ -148,11 +146,11 @@ const UserCreate = () => {
                                 value={formData.role}
                                 onChange={handleChange}
                             >
-                                <option value="user">
+                                <option value= {USER_ROLES.USER}>
                                     User
                                 </option>
 
-                                <option value="admin">
+                                <option value={USER_ROLES.ADMIN}>
                                     Admin
                                 </option>
                             </select>
