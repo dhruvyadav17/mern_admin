@@ -1,35 +1,28 @@
 const mongoose = require("mongoose");
-
 const User = require("../models/User");
 const AppError = require("../utils/AppError");
-const {
-    getPagination,
-    getPaginationMeta
-} = require("../utils/pagination");
 const {
     USER_ROLES,
     USER_STATUS
 } = require("../constants/userConstants");
-const {
-    hashPassword
-} = require("../utils/password");
+const { hashPassword } = require("../utils/password");
+const { toUserResponse, toUserListResponse } = require("../utils/userMapper");
+const { getPagination, getPaginationMeta } = require("../utils/pagination");
 
 const validateUserId = (id) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new AppError(
-            "Invalid user ID",
-            400
-        );
+        throw new AppError("Invalid user ID", 400);
     }
 };
 
-const ensureAnotherActiveAdminExists = async () => {
-    const adminCount = await User.countDocuments({
+const ensureActiveAdminWillRemain = async (excludeUserId) => {
+    const activeAdminCount = await User.countDocuments({
         role: USER_ROLES.ADMIN,
-        status: USER_STATUS.ACTIVE
+        status: USER_STATUS.ACTIVE,
+        ...(excludeUserId ? { _id: { $ne: excludeUserId } } : {})
     });
 
-    if (adminCount <= 1) {
+    if (activeAdminCount === 0) {
         throw new AppError(
             "At least one active admin is required",
             400
@@ -37,52 +30,29 @@ const ensureAnotherActiveAdminExists = async () => {
     }
 };
 
-const getUsers = async ({
-    page = 1,
-    limit = 10,
-    search = ""
-}) => {
-    const pagination = getPagination(
-        page,
-        limit
-    );
-
-    search = search.trim();
-
+const getUsers = async ({ page = 1, limit = 10, search = "" }) => {
+    const pagination = getPagination(page, limit);
+    const trimmedSearch = String(search || "").trim();
     const filter = {};
 
-    if (search) {
-        const safeSearch = search.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-        );
-
+    if (trimmedSearch) {
+        const safeSearch = trimmedSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         filter.$or = [
-            {
-                name: {
-                    $regex: safeSearch,
-                    $options: "i"
-                }
-            },
-            {
-                email: {
-                    $regex: safeSearch,
-                    $options: "i"
-                }
-            }
+            { name: { $regex: safeSearch, $options: "i" } },
+            { email: { $regex: safeSearch, $options: "i" } }
         ];
     }
 
-    const total = await User.countDocuments(filter);
-
-    const users = await User.find(filter)
-        .select("-password")
-        .sort({ createdAt: -1 })
-        .skip(pagination.skip)
-        .limit(pagination.limit);
+    const [users, total] = await Promise.all([
+        User.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(pagination.skip)
+            .limit(pagination.limit),
+        User.countDocuments(filter)
+    ]);
 
     return {
-        users,
+        users: toUserListResponse(users),
         pagination: getPaginationMeta(
             total,
             pagination.page,
@@ -100,274 +70,154 @@ const createUser = async ({
 }) => {
     const normalizedEmail = email.toLowerCase();
 
-    const existingUser = await User.findOne({
-        email: normalizedEmail
-    });
+    const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (existingUser) {
-        throw new AppError(
-            "Email already registered",
-            409
-        );
+        throw new AppError("Email already registered", 409);
     }
-
-    const hashedPassword =
-        await hashPassword(password);
 
     const user = await User.create({
         name,
         email: normalizedEmail,
-        password: hashedPassword,
+        password: await hashPassword(password),
         role,
         status
     });
 
-    return {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        createdAt: user.createdAt
-    };
+    return toUserResponse(user);
 };
 
 const getUserById = async (id) => {
     validateUserId(id);
 
-    const user = await User.findById(id)
-        .select("-password");
+    const user = await User.findById(id);
 
     if (!user) {
-        throw new AppError(
-            "User not found",
-            404
-        );
+        throw new AppError("User not found", 404);
     }
 
-    return user;
+    return toUserResponse(user);
 };
 
-const updateUser = async (
-    id,
-    data,
-    currentUserId
-) => {
+const updateUser = async (id, data, currentUserId) => {
     validateUserId(id);
-
-    const {
-        name,
-        email,
-        password,
-        role,
-        status
-    } = data;
 
     const user = await User.findById(id);
 
     if (!user) {
-        throw new AppError(
-            "User not found",
-            404
-        );
+        throw new AppError("User not found", 404);
     }
 
-    const isSelf =
-        user._id.toString() ===
-        currentUserId.toString();
+    const isSelf = user._id.toString() === currentUserId.toString();
+    const isActiveAdmin =
+        user.role === USER_ROLES.ADMIN &&
+        user.status === USER_STATUS.ACTIVE;
 
-    if (isSelf && role !== undefined) {
+    if (isSelf && (data.role !== undefined || data.status !== undefined)) {
         throw new AppError(
-            "You cannot change your own role",
+            "You cannot change your own role or status",
             400
         );
     }
 
-    if (isSelf && status !== undefined) {
-        throw new AppError(
-            "You cannot change your own status",
-            400
-        );
-    }
-
-    if (
-        email &&
-        email.toLowerCase() !== user.email
-    ) {
-        const normalizedEmail =
-            email.toLowerCase();
-
+    if (data.email && data.email.toLowerCase() !== user.email) {
+        const normalizedEmail = data.email.toLowerCase();
         const existingUser = await User.findOne({
             email: normalizedEmail,
-            _id: {
-                $ne: user._id
-            }
+            _id: { $ne: user._id }
         });
 
         if (existingUser) {
-            throw new AppError(
-                "Email already registered",
-                409
-            );
+            throw new AppError("Email already registered", 409);
         }
 
         user.email = normalizedEmail;
     }
 
-    if (name !== undefined) {
-        user.name = name;
+    if (data.name !== undefined) {
+        user.name = data.name;
     }
 
-    if (role !== undefined) {
-        if (
-            user.role === USER_ROLES.ADMIN &&
-            role !== USER_ROLES.ADMIN
-        ) {
-            const adminCount =
-                await User.countDocuments({
-                    role: USER_ROLES.ADMIN,
-                    status: USER_STATUS.ACTIVE
-                });
-
-            if (adminCount <= 1) {
-                throw new AppError(
-                    "At least one active admin is required",
-                    400
-                );
-            }
-        }
-
-        user.role = role;
+    if (
+        isActiveAdmin &&
+        data.role !== undefined &&
+        data.role !== USER_ROLES.ADMIN
+    ) {
+        await ensureActiveAdminWillRemain(user._id);
     }
 
-    if (status !== undefined) {
-        if (
-            user.role === USER_ROLES.ADMIN &&
-            status === USER_STATUS.INACTIVE
-        ) {
-            const adminCount =
-                await User.countDocuments({
-                    role: USER_ROLES.ADMIN,
-                    status: USER_STATUS.ACTIVE
-                });
-
-            if (adminCount <= 1) {
-                throw new AppError(
-                    "At least one active admin is required",
-                    400
-                );
-            }
-        }
-
-        user.status = status;
+    if (
+        isActiveAdmin &&
+        data.status === USER_STATUS.INACTIVE
+    ) {
+        await ensureActiveAdminWillRemain(user._id);
     }
 
-    if (password) {
-        user.password =
-            await hashPassword(password);
+    if (data.role !== undefined) {
+        user.role = data.role;
+    }
+
+    if (data.status !== undefined) {
+        user.status = data.status;
+    }
+
+    if (data.password) {
+        user.password = await hashPassword(data.password);
     }
 
     await user.save();
 
-    return {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        updatedAt: user.updatedAt
-    };
+    return toUserResponse(user);
 };
 
-const deleteUser = async (
-    id,
-    currentUserId
-) => {
+const deleteUser = async (id, currentUserId) => {
     validateUserId(id);
 
     const user = await User.findById(id);
 
     if (!user) {
-        throw new AppError(
-            "User not found",
-            404
-        );
+        throw new AppError("User not found", 404);
+    }
+
+    if (user._id.toString() === currentUserId.toString()) {
+        throw new AppError("You cannot delete your own account", 400);
     }
 
     if (
-        user._id.toString() ===
-        currentUserId.toString()
+        user.role === USER_ROLES.ADMIN &&
+        user.status === USER_STATUS.ACTIVE
     ) {
-        throw new AppError(
-            "You cannot delete your own account",
-            400
-        );
+        await ensureActiveAdminWillRemain(user._id);
     }
 
-    if (user.role === USER_ROLES.ADMIN) {
-       
-        await ensureAnotherActiveAdminExists();
-
-    }
-
-    await User.findByIdAndDelete(id);
+    await user.deleteOne();
 };
 
-const updateUserStatus = async (
-    id,
-    status,
-    currentUserId
-) => {
+const updateUserStatus = async (id, status, currentUserId) => {
     validateUserId(id);
 
     const user = await User.findById(id);
 
     if (!user) {
-        throw new AppError(
-            "User not found",
-            404
-        );
+        throw new AppError("User not found", 404);
+    }
+
+    if (user._id.toString() === currentUserId.toString()) {
+        throw new AppError("You cannot change your own status", 400);
     }
 
     if (
-        user._id.toString() ===
-        currentUserId.toString()
-    ) {
-        throw new AppError(
-            "You cannot change your own status",
-            400
-        );
-    }
-
-    if (
-        user.role ===  USER_ROLES.ADMIN &&
+        user.role === USER_ROLES.ADMIN &&
+        user.status === USER_STATUS.ACTIVE &&
         status === USER_STATUS.INACTIVE
     ) {
-        const adminCount =
-            await User.countDocuments({
-                role: USER_ROLES.ADMIN,
-                status: USER_STATUS.ACTIVE
-            });
-
-        if (adminCount <= 1) {
-            throw new AppError(
-                "At least one active admin is required",
-                400
-            );
-        }
+        await ensureActiveAdminWillRemain(user._id);
     }
 
     user.status = status;
-
     await user.save();
 
-    return {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status
-    };
+    return toUserResponse(user);
 };
 
 module.exports = {

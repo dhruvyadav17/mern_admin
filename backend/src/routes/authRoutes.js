@@ -1,19 +1,13 @@
 const express = require("express");
-
 const {
     register,
     login,
     getMe,
     logout
 } = require("../controllers/authController");
-
-const {
-    protect
-} = require("../middleware/authMiddleware");
-
+const { protect } = require("../middleware/authMiddleware");
 const asyncHandler = require("../utils/asyncHandler");
 const validate = require("../middleware/validateMiddleware");
-
 const {
     registerValidation,
     loginValidation
@@ -35,11 +29,11 @@ router.post(
     asyncHandler(login)
 );
 
-// router.get(
-//     "/me",
-//     protect,
-//     asyncHandler(getMe)
-// );
+router.get(
+    "/me",
+    protect,
+    asyncHandler(getMe)
+);
 
 router.post(
     "/logout",

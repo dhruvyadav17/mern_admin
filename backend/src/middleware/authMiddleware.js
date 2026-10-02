@@ -7,7 +7,7 @@ const {
 
 const protect = async (req, res, next) => {
     try {
-        const token = req.cookies.token;
+        const token = req.cookies?.token;
 
         if (!token) {
             return res.status(401).json({
@@ -16,13 +16,8 @@ const protect = async (req, res, next) => {
             });
         }
 
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET
-        );
-
-        const user = await User.findById(decoded.userId)
-            .select("-password");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.userId);
 
         if (!user) {
             return res.status(401).json({
@@ -31,7 +26,7 @@ const protect = async (req, res, next) => {
             });
         }
 
-        if (user.status !== "active") {
+        if (user.status !== USER_STATUS.ACTIVE) {
             return res.status(403).json({
                 success: false,
                 message: "User account is inactive"
@@ -39,9 +34,7 @@ const protect = async (req, res, next) => {
         }
 
         req.user = user;
-
         next();
-
     } catch (error) {
         return res.status(401).json({
             success: false,
@@ -49,7 +42,6 @@ const protect = async (req, res, next) => {
         });
     }
 };
-
 
 const adminOnly = (req, res, next) => {
     if (!req.user) {
@@ -59,7 +51,7 @@ const adminOnly = (req, res, next) => {
         });
     }
 
-    if (req.user.role !==  USER_ROLES.ADMIN) {
+    if (req.user.role !== USER_ROLES.ADMIN) {
         return res.status(403).json({
             success: false,
             message: "Admin access required"

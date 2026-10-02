@@ -1,36 +1,40 @@
-
-const { successResponse } = require("../utils/response");
 const authService = require("../services/authService");
-const cookieOptions = require("../config/cookie");
+const { successResponse } = require("../utils/response");
+const { toUserResponse } = require("../utils/userMapper");
+const {
+    authCookieOptions,
+    clearAuthCookieOptions
+} = require("../config/cookie");
 
 const register = async (req, res) => {
-    const user = await authService.registerUser(
-        req.body
-    );
+    const user = await authService.registerUser(req.body);
 
-    return res.status(201).json({
-        success: true,
-        message: "Registration successful",
-        data: user
-    });
+    return successResponse(
+        res,
+        user,
+        "Registration successful",
+        201
+    );
 };
 
 const login = async (req, res) => {
-    const { token, user } =
-        await authService.loginUser(req.body);
+    const { token, user } = await authService.loginUser(req.body);
 
-    res.cookie("token", token, cookieOptions.authCookieOptions);
+    res.cookie("token", token, authCookieOptions);
 
     return successResponse(res, user, "Login successful");
 };
 
 const getMe = async (req, res) => {
-
-    return successResponse(res, req.user, "User fetched successfully");
+    return successResponse(
+        res,
+        toUserResponse(req.user),
+        "User fetched successfully"
+    );
 };
 
 const logout = async (req, res) => {
-    res.clearCookie("token", cookieOptions.authCookieOptions);
+    res.clearCookie("token", clearAuthCookieOptions);
 
     return successResponse(res, null, "Logout successful");
 };

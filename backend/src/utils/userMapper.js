@@ -1,7 +1,5 @@
 const toUserResponse = (user) => {
-    if (!user) {
-        return null;
-    }
+    if (!user) return null;
 
     return {
         id: user._id,
@@ -14,9 +12,7 @@ const toUserResponse = (user) => {
     };
 };
 
-const toUserListResponse = (users) => {
-    return users.map(toUserResponse);
-};
+const toUserListResponse = (users) => users.map(toUserResponse);
 
 module.exports = {
     toUserResponse,

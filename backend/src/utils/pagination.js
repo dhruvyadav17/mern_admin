@@ -1,17 +1,7 @@
-const getPagination = (
-    page = 1,
-    limit = 10
-) => {
-    const currentPage = Math.max(
-        parseInt(page, 10) || 1,
-        1
-    );
-
+const getPagination = (page = 1, limit = 10) => {
+    const currentPage = Math.max(parseInt(page, 10) || 1, 1);
     const perPage = Math.min(
-        Math.max(
-            parseInt(limit, 10) || 10,
-            1
-        ),
+        Math.max(parseInt(limit, 10) || 10, 1),
         100
     );
 
@@ -22,14 +12,8 @@ const getPagination = (
     };
 };
 
-const getPaginationMeta = (
-    total,
-    page,
-    limit
-) => {
-    const totalPages = Math.ceil(
-        total / limit
-    );
+const getPaginationMeta = (total, page, limit) => {
+    const totalPages = Math.ceil(total / limit);
 
     return {
         page,

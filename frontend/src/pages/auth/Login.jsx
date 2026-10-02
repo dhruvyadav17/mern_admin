@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 import authService from "../../services/authService";
 import { useAuth } from "../../context/AuthContext";
-import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 const Login = () => {
     const navigate = useNavigate();
@@ -13,36 +14,31 @@ const Login = () => {
         email: "",
         password: ""
     });
-
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
     const handleChange = (event) => {
-        setFormData({
-            ...formData,
-            [event.target.name]: event.target.value
-        });
+        const { name, value } = event.target;
+        setFormData((previous) => ({
+            ...previous,
+            [name]: value
+        }));
     };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-
         setError("");
         setLoading(true);
 
         try {
-            const response =
-                await authService.login(formData);
+            const response = await authService.login(formData);
+            const user = response.data.data;
 
-            login(response.data.data);
+            login(user);
             toast.success("Login successful");
             navigate("/admin");
-
         } catch (error) {
-            setError(
-                error.response?.data?.message ||
-                "Login failed"
-            );
+            setError(getApiErrorMessage(error, "Login failed"));
         } finally {
             setLoading(false);
         }
@@ -52,13 +48,9 @@ const Login = () => {
         <div className="container mt-5">
             <div className="row justify-content-center">
                 <div className="col-md-5">
-
                     <div className="card shadow-sm">
                         <div className="card-body p-4">
-
-                            <h3 className="mb-4">
-                                Login
-                            </h3>
+                            <h3 className="mb-4">Login</h3>
 
                             {error && (
                                 <div className="alert alert-danger">
@@ -67,12 +59,8 @@ const Login = () => {
                             )}
 
                             <form onSubmit={handleSubmit}>
-
                                 <div className="mb-3">
-                                    <label className="form-label">
-                                        Email
-                                    </label>
-
+                                    <label className="form-label">Email</label>
                                     <input
                                         type="email"
                                         name="email"
@@ -84,10 +72,7 @@ const Login = () => {
                                 </div>
 
                                 <div className="mb-3">
-                                    <label className="form-label">
-                                        Password
-                                    </label>
-
+                                    <label className="form-label">Password</label>
                                     <input
                                         type="password"
                                         name="password"
@@ -103,23 +88,16 @@ const Login = () => {
                                     className="btn btn-primary w-100"
                                     disabled={loading}
                                 >
-                                    {loading
-                                        ? "Logging in..."
-                                        : "Login"}
+                                    {loading ? "Logging in..." : "Login"}
                                 </button>
-
                             </form>
 
                             <div className="mt-3 text-center">
                                 Don't have an account?{" "}
-                                <Link to="/register">
-                                    Register
-                                </Link>
+                                <Link to="/register">Register</Link>
                             </div>
-
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>

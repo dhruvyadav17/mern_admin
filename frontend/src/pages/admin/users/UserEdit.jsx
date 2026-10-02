@@ -1,114 +1,87 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import userService from "../../../services/userService";
-import toast from "react-hot-toast";
+import UserForm from "../../../components/users/UserForm";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import userService from "../../../services/userService";
+import { getApiErrorMessage } from "../../../utils/apiError";
+import { useAuth } from "../../../context/AuthContext";
 
 const UserEdit = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user: currentUser } = useAuth();
 
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        password: "",
-        role: "user",
-        status: "active"
-    });
-
+    const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
 
-    const fetchUser = async () => {
-        setLoading(true);
-        setError("");
-
-        try {
-            
-            const response = await userService.getUser(id);
-            const user = response.data.data;
-
-            setFormData({
-                name: user.name,
-                email: user.email,
-                password: "",
-                role: user.role,
-                status: user.status
-            });
-
-        } catch (error) {
-            setError(
-                error.response?.data?.message ||
-                "Failed to load user"
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
+        const fetchUser = async () => {
+            setLoading(true);
+            setError("");
+
+            try {
+                const response = await userService.getUser(id);
+                setUser(response.data.data);
+            } catch (error) {
+                setError(getApiErrorMessage(error, "Failed to load user"));
+            } finally {
+                setLoading(false);
+            }
+        };
+
         fetchUser();
     }, [id]);
 
-    const handleChange = (event) => {
-        setFormData({
-            ...formData,
-            [event.target.name]: event.target.value
-        });
-    };
-
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-
-        setError("");
+    const handleSubmit = async (data) => {
         setSaving(true);
+        setError("");
 
         try {
             const updateData = {
-                name: formData.name,
-                email: formData.email,
-                role: formData.role,
-                status: formData.status
+                name: data.name,
+                email: data.email,
+                role: data.role,
+                status: data.status
             };
 
-            // Password only send when user entered a new password
-            if (formData.password) {
-                updateData.password = formData.password;
+            if (data.password) {
+                updateData.password = data.password;
             }
 
             await userService.updateUser(id, updateData);
-            toast.success("User updated successfully");
             navigate("/admin/users");
-
         } catch (error) {
-            setError(
-                error.response?.data?.message ||
-                "Failed to update user"
-            );
+            setError(getApiErrorMessage(error, "Failed to update user"));
         } finally {
             setSaving(false);
         }
     };
 
     if (loading) {
+        return <LoadingSpinner message="Loading user..." />;
+    }
+
+    if (!user) {
         return (
-            <LoadingSpinner message="Loading user..." />
+            <div>
+                <div className="alert alert-danger">{error || "User not found"}</div>
+                <Link to="/admin/users" className="btn btn-secondary">
+                    Back to Users
+                </Link>
+            </div>
         );
     }
 
+    const isSelf = currentUser?.id?.toString() === user.id?.toString();
+
     return (
         <div>
-
-            {/* Header */}
             <div className="d-flex justify-content-between align-items-center mb-4">
-
                 <div>
-                    <h2 className="mb-1">
-                        Edit User
-                    </h2>
-
+                    <h2 className="mb-1">Edit User</h2>
                     <p className="text-muted mb-0">
                         Update user information
                     </p>
@@ -120,147 +93,21 @@ const UserEdit = () => {
                 >
                     Back to Users
                 </Link>
-
             </div>
 
-            {/* Form */}
             <div className="card shadow-sm">
-
                 <div className="card-body">
-
-                    {error && (
-                        <div className="alert alert-danger">
-                            {error}
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit}>
-
-                        {/* Name */}
-                        <div className="mb-3">
-                            <label className="form-label">
-                                Name
-                            </label>
-
-                            <input
-                                type="text"
-                                name="name"
-                                className="form-control"
-                                value={formData.name}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-
-                        {/* Email */}
-                        <div className="mb-3">
-                            <label className="form-label">
-                                Email
-                            </label>
-
-                            <input
-                                type="email"
-                                name="email"
-                                className="form-control"
-                                value={formData.email}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
-
-                        {/* Password */}
-                        <div className="mb-3">
-                            <label className="form-label">
-                                New Password
-                            </label>
-
-                            <input
-                                type="password"
-                                name="password"
-                                className="form-control"
-                                value={formData.password}
-                                onChange={handleChange}
-                                minLength="6"
-                            />
-
-                            <div className="form-text">
-                                Leave blank if you do not want to
-                                change the password.
-                            </div>
-                        </div>
-
-                        {/* Role */}
-                        <div className="mb-3">
-                            <label className="form-label">
-                                Role
-                            </label>
-
-                            <select
-                                name="role"
-                                className="form-select"
-                                value={formData.role}
-                                onChange={handleChange}
-                            >
-                                <option value="user">
-                                    User
-                                </option>
-
-                                <option value="admin">
-                                    Admin
-                                </option>
-                            </select>
-                        </div>
-
-                        {/* Status */}
-                        <div className="mb-4">
-                            <label className="form-label">
-                                Status
-                            </label>
-
-                            <select
-                                name="status"
-                                className="form-select"
-                                value={formData.status}
-                                onChange={handleChange}
-                            >
-                                <option value="active">
-                                    Active
-                                </option>
-
-                                <option value="inactive">
-                                    Inactive
-                                </option>
-                            </select>
-                        </div>
-
-                        {/* Buttons */}
-                        <div className="d-flex gap-2">
-
-                            <button
-                                type="submit"
-                                className="btn btn-primary"
-                                disabled={saving}
-                            >
-                                {saving
-                                    ? "Updating..."
-                                    : "Update User"}
-                            </button>
-
-                            <Link
-                                to="/admin/users"
-                                className="btn btn-secondary"
-                            >
-                                Cancel
-                            </Link>
-
-                        </div>
-
-                    </form>
-
+                    <UserForm
+                        initialValues={user}
+                        onSubmit={handleSubmit}
+                        submitting={saving}
+                        error={error}
+                        isEdit
+                        disableRoleStatus={isSelf}
+                        submitLabel="Update User"
+                    />
                 </div>
-
             </div>
-
         </div>
     );
 };

@@ -1,4 +1,8 @@
 const { body } = require("express-validator");
+const {
+    USER_ROLE_VALUES,
+    USER_STATUS_VALUES
+} = require("../constants/userConstants");
 
 const createUserValidation = [
     body("name")
@@ -24,12 +28,12 @@ const createUserValidation = [
 
     body("role")
         .optional()
-        .isIn(["admin", "user"])
+        .isIn(USER_ROLE_VALUES)
         .withMessage("Invalid role"),
 
     body("status")
         .optional()
-        .isIn(["active", "inactive"])
+        .isIn(USER_STATUS_VALUES)
         .withMessage("Invalid status")
 ];
 
@@ -37,6 +41,8 @@ const updateUserValidation = [
     body("name")
         .optional()
         .trim()
+        .notEmpty()
+        .withMessage("Name cannot be empty")
         .isLength({ max: 100 })
         .withMessage("Name must not exceed 100 characters"),
 
@@ -54,12 +60,12 @@ const updateUserValidation = [
 
     body("role")
         .optional()
-        .isIn(["admin", "user"])
+        .isIn(USER_ROLE_VALUES)
         .withMessage("Invalid role"),
 
     body("status")
         .optional()
-        .isIn(["active", "inactive"])
+        .isIn(USER_STATUS_VALUES)
         .withMessage("Invalid status")
 ];
 
@@ -67,8 +73,8 @@ const updateUserStatusValidation = [
     body("status")
         .notEmpty()
         .withMessage("Status is required")
-        .isIn(["active", "inactive"])
-        .withMessage("Status must be active or inactive")
+        .isIn(USER_STATUS_VALUES)
+        .withMessage("Invalid user status")
 ];
 
 module.exports = {

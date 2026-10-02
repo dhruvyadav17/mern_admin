@@ -2,37 +2,36 @@ const userService = require("../services/userService");
 const { successResponse } = require("../utils/response");
 
 const getUsers = async (req, res) => {
-    const result = await userService.getUsers({
-        page: req.query.page,
-        limit: req.query.limit,
-        search: req.query.search
-    });
+    const result = await userService.getUsers(req.query);
 
     return successResponse(
         res,
         result.users,
         "Users fetched successfully",
         200,
-        {
-            pagination: result.pagination
-        }
+        { pagination: result.pagination }
     );
 };
 
 const createUser = async (req, res) => {
-    const user = await userService.createUser(
-        req.body
-    );
+    const user = await userService.createUser(req.body);
 
-    return successResponse(res, user, "User created successfully", 201);
+    return successResponse(
+        res,
+        user,
+        "User created successfully",
+        201
+    );
 };
 
 const getUserById = async (req, res) => {
-    const user = await userService.getUserById(
-        req.params.id
-    );
+    const user = await userService.getUserById(req.params.id);
 
-    return successResponse(res, user, "User fetched successfully", 200);
+    return successResponse(
+        res,
+        user,
+        "User fetched successfully"
+    );
 };
 
 const updateUser = async (req, res) => {
@@ -55,14 +54,17 @@ const deleteUser = async (req, res) => {
 };
 
 const updateUserStatus = async (req, res) => {
-    const user =
-        await userService.updateUserStatus(
-            req.params.id,
-            req.body.status,
-            req.user._id
-        );
+    const user = await userService.updateUserStatus(
+        req.params.id,
+        req.body.status,
+        req.user._id
+    );
 
-    return successResponse(res, user, `User ${req.body.status} successfully`);
+    return successResponse(
+        res,
+        user,
+        `User ${req.body.status} successfully`
+    );
 };
 
 module.exports = {

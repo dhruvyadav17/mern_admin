@@ -4,25 +4,31 @@ const api = axios.create({
     baseURL:
         import.meta.env.VITE_API_URL ||
         "http://localhost:5000/api",
-
     withCredentials: true,
-
     headers: {
         "Content-Type": "application/json"
     }
 });
 
+const authRoutes = [
+    "/auth/login",
+    "/auth/register",
+    "/auth/logout"
+];
+
 api.interceptors.response.use(
-    (response) => {
-        return response;
-    },
+    (response) => response,
     (error) => {
+        const requestUrl = error.config?.url || "";
+        const isAuthRequest = authRoutes.some((route) =>
+            requestUrl.includes(route)
+        );
+
         if (
             error.response?.status === 401 &&
-            !error.config?.url?.includes("/auth/login") &&
-            !error.config?.url?.includes("/auth/register")
+            !isAuthRequest
         ) {
-            window.location.href = "/login";
+            window.location.replace("/login");
         }
 
         return Promise.reject(error);
