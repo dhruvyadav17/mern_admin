@@ -3,6 +3,10 @@ const mongoose = require("mongoose");
 const User = require("../models/User");
 const AppError = require("../utils/AppError");
 const {
+    getPagination,
+    getPaginationMeta
+} = require("../utils/pagination");
+const {
     USER_ROLES,
     USER_STATUS
 } = require("../constants/userConstants");
@@ -38,16 +42,12 @@ const getUsers = async ({
     limit = 10,
     search = ""
 }) => {
-    page = Math.max(parseInt(page) || 1, 1);
-
-    limit = Math.min(
-        Math.max(parseInt(limit) || 10, 1),
-        100
+    const pagination = getPagination(
+        page,
+        limit
     );
 
     search = search.trim();
-
-    const skip = (page - 1) * limit;
 
     const filter = {};
 
@@ -78,23 +78,16 @@ const getUsers = async ({
     const users = await User.find(filter)
         .select("-password")
         .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit);
-
-    const totalPages = Math.ceil(
-        total / limit
-    );
+        .skip(pagination.skip)
+        .limit(pagination.limit);
 
     return {
         users,
-        pagination: {
-            page,
-            limit,
+        pagination: getPaginationMeta(
             total,
-            totalPages,
-            hasNextPage: page < totalPages,
-            hasPreviousPage: page > 1
-        }
+            pagination.page,
+            pagination.limit
+        )
     };
 };
 
@@ -312,18 +305,7 @@ const deleteUser = async (
     }
 
     if (user.role === USER_ROLES.ADMIN) {
-        // const adminCount =
-        //     await User.countDocuments({
-        //         role: USER_ROLES.ADMIN,
-        //         status: USER_STATUS.ACTIVE
-        //     });
-
-        // if (adminCount <= 1) {
-        //     throw new AppError(
-        //         "At least one active admin is required",
-        //         400
-        //     );
-        // }
+       
         await ensureAnotherActiveAdminExists();
 
     }

@@ -7,6 +7,8 @@ const {
     USER_STATUS
 } = require("../constants/userConstants");
 
+const userMapper = require("../utils/userMapper");
+
 const {
     hashPassword,
     comparePassword
@@ -42,14 +44,14 @@ const registerUser = async ({
         role: USER_ROLES.USER,
         status: USER_STATUS.ACTIVE
     });
-
-    return {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status
-    };
+    return userMapper.toUserResponse(user);
+    // return {
+    //     id: user._id,
+    //     name: user.name,
+    //     email: user.email,
+    //     role: user.role,
+    //     status: user.status
+    // };
 };
 
 const loginUser = async ({
@@ -103,14 +105,16 @@ const loginUser = async ({
 
     return {
         token,
-        user: {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            status: user.status
-        }
+        user:userMapper.toUserResponse(user) 
+       
     };
+     // {
+        //     id: user._id,
+        //     name: user.name,
+        //     email: user.email,
+        //     role: user.role,
+        //     status: user.status
+        // }
 };
 
 module.exports = {

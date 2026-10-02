@@ -1,4 +1,4 @@
-frontend/src/componentsconst dashboardService = require("../services/dashboardService");
+dashboardService = require("../services/dashboardService");
 const { successResponse } = require("../utils/response");
 const getDashboardStats = async (req, res) => {
     const stats = await dashboardService.getDashboardStats();

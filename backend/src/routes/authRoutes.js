@@ -35,11 +35,11 @@ router.post(
     asyncHandler(login)
 );
 
-router.get(
-    "/me",
-    protect,
-    asyncHandler(getMe)
-);
+// router.get(
+//     "/me",
+//     protect,
+//     asyncHandler(getMe)
+// );
 
 router.post(
     "/logout",
