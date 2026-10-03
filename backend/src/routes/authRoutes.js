@@ -22,7 +22,8 @@ const {
 } = require("../validators/authValidator");
 const {
     loginRateLimit,
-    registerRateLimit
+    registerRateLimit,
+    forgotPasswordRateLimit
 } = require("../middleware/rateLimit");
 
 const router = express.Router();
@@ -45,7 +46,7 @@ router.post(
 );
 
 
-router.post("/forgot-password", forgotPasswordValidation, validate, asyncHandler(forgotPassword));
+router.post("/forgot-password", forgotPasswordRateLimit, forgotPasswordValidation, validate, asyncHandler(forgotPassword));
 router.post("/reset-password", resetPasswordValidation, validate, asyncHandler(resetPassword));
 
 router.get(

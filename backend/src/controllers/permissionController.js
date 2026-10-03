@@ -4,12 +4,29 @@ const { getEffectivePermissions } = require("../middleware/permissionMiddleware"
 const { log: audit } = require("../services/auditService");
 const AppError = require("../utils/AppError");
 
+const actorHasAllPermissions = (req) => (req.permissions || []).includes("*");
+const ensureCanGrantPermissions = (req, permissions = []) => {
+    if (actorHasAllPermissions(req)) return;
+
+    const actorPermissions = new Set(req.permissions || []);
+    const forbidden = [...new Set(permissions)]
+        .map((permission) => String(permission || "").trim().toLowerCase())
+        .filter(Boolean)
+        .filter((permission) => !actorPermissions.has(permission));
+
+    if (forbidden.length) {
+        throw new AppError("You cannot grant permissions you do not possess", 403);
+    }
+};
+
 const list = async (req, res) => successResponse(res, await service.listPermissions(), "Permissions fetched successfully");
 const create = async (req, res) => { const permission = await service.createPermission(req.body); await audit(req, "permission.create", "Permission", permission._id, { key: permission.key }); return successResponse(res, permission, "Permission created successfully", 201); };
 const update = async (req, res) => { const permission = await service.updatePermission(req.params.id, req.body); await audit(req, "permission.update", "Permission", permission._id, { changes: Object.keys(req.body) }); return successResponse(res, permission, "Permission updated successfully"); };
 const remove = async (req, res) => { await service.deletePermission(req.params.id); await audit(req, "permission.delete", "Permission", req.params.id); return successResponse(res, null, "Permission deleted successfully"); };
 const updateRolePermissions = async (req, res) => {
-    const role = await service.updateRolePermissions(req.params.roleId, req.body.permissions || []);
+    const permissions = req.body.permissions || [];
+    ensureCanGrantPermissions(req, permissions);
+    const role = await service.updateRolePermissions(req.params.roleId, permissions);
     try {
         await audit(req, "role.permissions.update", "Role", role._id, { permissions: role.permissions });
     } catch (auditError) {
@@ -26,6 +43,9 @@ const updateUserPermission = async (req, res) => {
 
     const permission = String(req.body.permission).trim().toLowerCase();
     const enabled = req.body.enabled === true;
+    if (enabled) {
+        ensureCanGrantPermissions(req, [permission]);
+    }
 
     const user = await service.setUserPermission(req.params.userId, permission, enabled);
     // The permission mutation itself is the source of truth. Audit logging must
@@ -41,10 +61,7 @@ const updateUserPermission = async (req, res) => {
 const updateUserOverrides = async (req, res) => {
     if (String(req.params.userId) === String(req.user._id)) throw new AppError("You cannot change your own permission overrides", 403);
     const allow = req.body.allow || [];
-    if (!(req.permissions || []).includes("*")) {
-        const forbidden = allow.filter((p) => !(req.permissions || []).includes(p));
-        if (forbidden.length) throw new AppError("You cannot grant permissions you do not possess", 403);
-    }
+    ensureCanGrantPermissions(req, allow);
     const user = await service.updateUserOverrides(req.params.userId, allow, req.body.deny || []);
     try {
         await audit(req, "user.permissions.update", "User", user._id, { allow: user.permissionOverrides.allow, deny: user.permissionOverrides.deny });

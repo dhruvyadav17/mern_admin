@@ -1,25 +1,45 @@
+const SENSITIVE_KEYS = new Set([
+    "password",
+    "currentpassword",
+    "confirmpassword",
+    "token",
+    "resettoken",
+    "authorization"
+]);
+
+const redactSensitive = (value) => {
+    if (!value || typeof value !== "object") return value;
+    if (Array.isArray(value)) return value.map(redactSensitive);
+
+    return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [
+            key,
+            SENSITIVE_KEYS.has(key.toLowerCase()) ? "[redacted]" : redactSensitive(item)
+        ])
+    );
+};
+
 const errorMiddleware = (err, req, res, next) => {
-    console.error("\n==============================================");
-    console.error("GLOBAL ERROR MIDDLEWARE");
-    console.error("==============================================");
-    console.error("METHOD:", req.method);
-    console.error("URL:", req.originalUrl);
-    console.error("PARAMS:", req.params);
-    console.error("BODY:", req.body);
-    console.error("USER ID:", req.user?._id);
-    console.error("USER EMAIL:", req.user?.email);
-    console.error("PERMISSIONS:", req.permissions);
-    console.error("----------------------------------------------");
-    console.error("ERROR NAME:", err?.name);
-    console.error("ERROR MESSAGE:", err?.message);
-    console.error("ERROR CODE:", err?.code);
-    console.error("ERROR STATUS:", err?.status);
-    console.error("ERROR STATUS CODE:", err?.statusCode);
-    console.error("ERROR OPERATIONAL:", err?.isOperational);
-    console.error("----------------------------------------------");
-    console.error("ERROR STACK:");
-    console.error(err?.stack);
-    console.error("==============================================\n");
+    const logPayload = {
+        method: req.method,
+        url: req.originalUrl,
+        params: req.params,
+        body: redactSensitive(req.body),
+        userId: req.user?._id?.toString?.(),
+        error: {
+            name: err?.name,
+            message: err?.message,
+            code: err?.code,
+            statusCode: err?.statusCode,
+            isOperational: err?.isOperational
+        }
+    };
+
+    if (process.env.NODE_ENV === "production") {
+        console.error("Request failed", logPayload);
+    } else {
+        console.error("Request failed", { ...logPayload, stack: err?.stack });
+    }
 
     let statusCode = err.statusCode || 500;
     let message = err.isOperational

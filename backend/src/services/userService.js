@@ -22,9 +22,7 @@ const validateUserId = (id) => {
 };
 
 const withActiveAdminLock = async (operation) => {
-    console.log("[LOCK 1] withActiveAdminLock START");
     const locks = User.db.collection("system_locks");
-    console.log("[LOCK 2] system_locks collection acquired");
     const owner = crypto.randomUUID();
     let acquired = false;
 
@@ -35,7 +33,6 @@ const withActiveAdminLock = async (operation) => {
         );
 
         try {
-            console.log("[LOCK 3] findOneAndUpdate attempt:", attempt + 1);
             const result = await locks.findOneAndUpdate(
                 {
                     _id: ADMIN_LOCK_ID,
@@ -58,14 +55,7 @@ const withActiveAdminLock = async (operation) => {
             // returns the document directly or wraps it in `value`.
             const lockedDocument = result?.value ?? result;
             acquired = Boolean(lockedDocument?.owner === owner);
-            console.log("[LOCK 4] lock result:", {
-                acquired,
-                owner,
-                returnedOwner: lockedDocument?.owner
-            });
         } catch (error) {
-            console.error("[LOCK ERROR]", error?.name, error?.message, error?.code);
-            console.error(error?.stack);
             if (error?.code !== 11000) {
                 throw error;
             }
@@ -77,18 +67,13 @@ const withActiveAdminLock = async (operation) => {
     }
 
     if (!acquired) {
-        console.error("[LOCK 5] FAILED TO ACQUIRE LOCK");
         throw new AppError("Admin operation is busy. Please try again.", 409);
     }
-
-    console.log("[LOCK 6] LOCK ACQUIRED");
 
     try {
         return await operation();
     } finally {
-        console.log("[LOCK 7] releasing lock");
         await locks.deleteOne({ _id: ADMIN_LOCK_ID, owner });
-        console.log("[LOCK 8] lock released");
     }
 };
 
@@ -224,37 +209,18 @@ const normalizeUserUpdateData = (data = {}) => {
 };
 
 const updateUser = async (id, data, currentUserId) => {
-    console.log("\n========== USER UPDATE SERVICE ==========");
-    console.log("[UPDATE 1] id:", id);
-    console.log("[UPDATE 1] data:", JSON.stringify(data, null, 2));
-    console.log("[UPDATE 1] currentUserId:", currentUserId);
-
     validateUserId(id);
-    console.log("[UPDATE 2] validateUserId: OK");
 
     const normalizedData = normalizeUserUpdateData(data);
-    console.log("[UPDATE 3] normalizedData:", JSON.stringify(normalizedData, null, 2));
-    console.log("[UPDATE 3] roles is array:", Array.isArray(normalizedData.roles));
 
     const mutation = async () => {
-        console.log("[UPDATE 4] mutation START");
-
         const user = await User.findById(id);
-        console.log("[UPDATE 5] findById:", user ? {
-            id: user._id,
-            email: user.email,
-            role: user.role,
-            roles: user.roles,
-            status: user.status
-        } : null);
 
         if (!user) throw new AppError("User not found", 404);
 
         const actorId = currentUserId?.toString?.();
         const isSelf = Boolean(actorId && user._id.toString() === actorId);
-        console.log("[UPDATE 6] isSelf:", isSelf, "actorId:", actorId);
         const currentRoles = user.roles?.length ? user.roles : [user.role];
-        console.log("[UPDATE 7] currentRoles:", currentRoles);
 
         const nextRoles = normalizedData.roles !== undefined
             ? normalizedData.roles
@@ -262,20 +228,16 @@ const updateUser = async (id, data, currentUserId) => {
                 ? [normalizedData.role]
                 : currentRoles;
         const isActiveAdmin = currentRoles.includes(USER_ROLES.ADMIN) && user.status === USER_STATUS.ACTIVE;
-        console.log("[UPDATE 8] nextRoles:", nextRoles);
-        console.log("[UPDATE 8] isActiveAdmin:", isActiveAdmin);
 
         if (isSelf && (normalizedData.role !== undefined || normalizedData.roles !== undefined || normalizedData.status !== undefined)) {
             throw new AppError("You cannot change your own role or status", 400);
         }
 
         if (normalizedData.roles !== undefined) {
-            console.log("[UPDATE 9] validating roles:", normalizedData.roles);
             if (!normalizedData.roles.length) {
                 throw new AppError("At least one role is required", 400);
             }
             const foundRoles = await Role.find({ name: { $in: normalizedData.roles } }).select("name").lean();
-            console.log("[UPDATE 10] foundRoles:", foundRoles);
             if (foundRoles.length !== normalizedData.roles.length) {
                 throw new AppError("One or more roles not found", 400);
             }
@@ -286,13 +248,11 @@ const updateUser = async (id, data, currentUserId) => {
         }
 
         if (normalizedData.email !== undefined && normalizedData.email !== user.email) {
-            console.log("[UPDATE 11] checking email:", normalizedData.email);
             const existingUser = await User.findOne({
                 email: normalizedData.email,
                 _id: { $ne: user._id }
             }).select("_id").lean();
 
-            console.log("[UPDATE 11] existingUser:", existingUser);
             if (existingUser) throw new AppError("Email already registered", 409);
             user.email = normalizedData.email;
         }
@@ -331,38 +291,17 @@ const updateUser = async (id, data, currentUserId) => {
         if (passwordChanged) user.password = await hashPassword(normalizedData.password);
         if (securityChange) user.authVersion = (user.authVersion || 0) + 1;
 
-        console.log("[UPDATE 12] BEFORE SAVE:", {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            roles: user.roles,
-            rolesIsArray: Array.isArray(user.roles),
-            status: user.status,
-            authVersion: user.authVersion
-        });
-
         try {
             await user.save();
-            console.log("[UPDATE 13] user.save(): SUCCESS");
         } catch (error) {
-            console.error("[UPDATE 13] user.save(): FAILED");
-            console.error("SAVE ERROR NAME:", error?.name);
-            console.error("SAVE ERROR MESSAGE:", error?.message);
-            console.error("SAVE ERROR CODE:", error?.code);
-            console.error("SAVE ERROR DETAILS:", error?.errors);
-            console.error("SAVE ERROR STACK:", error?.stack);
             if (error?.code === 11000) throw new AppError("Email already registered", 409);
             throw error;
         }
 
-        console.log("[UPDATE 14] toUserResponse START");
         const response = toUserResponse(user);
-        console.log("[UPDATE 15] toUserResponse SUCCESS");
         return response;
     };
 
-    console.log("[UPDATE 16] withActiveAdminLock START");
     return withActiveAdminLock(mutation);
 };
 

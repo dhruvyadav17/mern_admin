@@ -51,7 +51,14 @@ const registerRateLimit = createRateLimiter({
     message: "Too many registration attempts. Please try again later."
 });
 
+const forgotPasswordRateLimit = createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: "Too many password reset requests. Please try again later."
+});
+
 module.exports = {
     loginRateLimit,
-    registerRateLimit
+    registerRateLimit,
+    forgotPasswordRateLimit
 };
