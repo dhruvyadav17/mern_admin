@@ -1,3 +1,17 @@
+const mongoose = require("mongoose");
+
+const mongoStoreEnabled = () => process.env.RATE_LIMIT_STORE === "mongo";
+
+let mongoIndexReady = false;
+
+const ensureMongoIndex = async () => {
+    if (mongoIndexReady) return;
+    await mongoose.connection
+        .collection("rate_limits")
+        .createIndex({ resetAt: 1 }, { expireAfterSeconds: 0 });
+    mongoIndexReady = true;
+};
+
 const createRateLimiter = ({ windowMs, max, message }) => {
     const hits = new Map();
 
@@ -12,9 +26,48 @@ const createRateLimiter = ({ windowMs, max, message }) => {
 
     cleanup.unref?.();
 
-    return (req, res, next) => {
+    return async (req, res, next) => {
         const key = req.ip || req.socket.remoteAddress || "unknown";
         const now = Date.now();
+
+        if (mongoStoreEnabled()) {
+            try {
+                await ensureMongoIndex();
+                const resetAt = new Date(now + windowMs);
+                const bucket = `${req.method}:${req.route?.path || req.path}:${key}`;
+                const collection = mongoose.connection.collection("rate_limits");
+                await collection.deleteOne({
+                    _id: bucket,
+                    resetAt: { $lte: new Date(now) }
+                });
+                const result = await collection.findOneAndUpdate(
+                    { _id: bucket },
+                    {
+                        $inc: { count: 1 },
+                        $setOnInsert: { resetAt }
+                    },
+                    {
+                        upsert: true,
+                        returnDocument: "after",
+                        includeResultMetadata: false
+                    }
+                );
+                const entry = result?.value ?? result;
+
+                res.setHeader("RateLimit-Limit", max);
+                res.setHeader("RateLimit-Remaining", Math.max(max - entry.count, 0));
+                res.setHeader("RateLimit-Reset", Math.ceil(new Date(entry.resetAt).getTime() / 1000));
+
+                if (entry.count > max) {
+                    return res.status(429).json({ success: false, message });
+                }
+
+                return next();
+            } catch (error) {
+                return next(error);
+            }
+        }
+
         let entry = hits.get(key);
 
         if (!entry || entry.resetAt <= now) {

@@ -9,5 +9,15 @@ const loginValidation = [emailValidation, body("password").notEmpty().withMessag
 const forgotPasswordValidation = [emailValidation];
 const resetPasswordValidation = [body("token").trim().notEmpty().withMessage("Reset token is required"), passwordValidation];
 const changePasswordValidation = [body("currentPassword").notEmpty().withMessage("Current password is required"), passwordValidation];
+const verifyEmailValidation = [body("token").trim().notEmpty().withMessage("Verification token is required")];
+const resendVerificationValidation = [emailValidation];
 
-module.exports = { registerValidation, loginValidation, forgotPasswordValidation, resetPasswordValidation, changePasswordValidation };
+module.exports = {
+    registerValidation,
+    loginValidation,
+    forgotPasswordValidation,
+    resetPasswordValidation,
+    changePasswordValidation,
+    verifyEmailValidation,
+    resendVerificationValidation
+};

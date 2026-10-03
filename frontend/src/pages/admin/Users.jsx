@@ -115,14 +115,11 @@ export default function Users() {
 
     setSaving(true);
     try {
-      console.log("Calling API:", `/users/${editing}`);
-      console.log("API payload:", payload);
-
-      const response = editing
-        ? await userService.updateUser(editing, payload)
-        : await userService.createUser(payload);
-
-      console.log("API SUCCESS:", response);
+      if (editing) {
+        await userService.updateUser(editing, payload);
+      } else {
+        await userService.createUser(payload);
+      }
 
       close();
       await load();

@@ -7,15 +7,32 @@ const { log: audit } = require("../services/auditService");
 const passwordResetService = require("../services/passwordResetService");
 const { hashPassword, comparePassword } = require("../utils/password");
 const AppError = require("../utils/AppError");
-const { authCookieOptions, clearAuthCookieOptions } = require("../config/cookie");
+const { clearAuthCookieOptions, getAuthCookieOptions } = require("../config/cookie");
+const { minutesToMilliseconds } = require("../utils/sessionPolicy");
+const {
+    createCsrfToken,
+    csrfCookieOptions,
+    CSRF_COOKIE_NAME
+} = require("../utils/csrfToken");
+const emailVerificationService = require("../services/emailVerificationService");
 
 const register = async (req, res) => successResponse(res, await authService.registerUser(req.body), "Registration successful", 201);
 
 const login = async (req, res) => {
-    const { token, user } = await authService.loginUser(req.body);
-    res.cookie("token", token, authCookieOptions);
+    const { token, user, sessionTimeoutMinutes } = await authService.loginUser(req.body);
+    res.cookie(
+        "token",
+        token,
+        getAuthCookieOptions(minutesToMilliseconds(sessionTimeoutMinutes))
+    );
     await audit({ user: { _id: user.id }, ip: req.ip, get: req.get.bind(req) }, "auth.login", "User", user.id, { email: user.email });
     return successResponse(res, user, "Login successful");
+};
+
+const csrf = async (req, res) => {
+    const token = createCsrfToken();
+    res.cookie(CSRF_COOKIE_NAME, token, csrfCookieOptions);
+    return successResponse(res, { csrfToken: token }, "CSRF token issued");
 };
 
 const getMe = async (req, res) => successResponse(res, toUserResponse(req.user, await getEffectivePermissions(req.user)), "User fetched successfully");
@@ -38,6 +55,19 @@ const resetPassword = async (req, res) => {
     return successResponse(res, null, "Password reset successful");
 };
 
+const verifyEmail = async (req, res) => {
+    await emailVerificationService.verify(req.body.token);
+    return successResponse(res, null, "Email verified successfully");
+};
+
+const resendVerification = async (req, res) => {
+    return successResponse(
+        res,
+        await emailVerificationService.requestVerification(req.body.email),
+        "If verification is required, instructions were generated"
+    );
+};
+
 
 const updateProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
@@ -54,7 +84,20 @@ const logout = async (req, res) => {
     await req.user.save();
     await audit(req, "auth.logout", "User", req.user._id);
     res.clearCookie("token", clearAuthCookieOptions);
+    res.clearCookie(CSRF_COOKIE_NAME, csrfCookieOptions);
     return successResponse(res, null, "Logout successful");
 };
 
-module.exports = { register, login, getMe, logout, forgotPassword, resetPassword, changePassword, updateProfile };
+module.exports = {
+    register,
+    login,
+    getMe,
+    logout,
+    forgotPassword,
+    resetPassword,
+    changePassword,
+    updateProfile,
+    csrf,
+    verifyEmail,
+    resendVerification
+};

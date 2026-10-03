@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import PageHeader from "../../components/common/PageHeader";
 import authService from "../../services/authService";
 
 export default function ChangePassword() {
     const [form, setForm] = useState({ currentPassword: "", password: "", confirmPassword: "" });
-    const navigate = useNavigate();
     const save = async (e) => {
         e.preventDefault();
         if (form.password !== form.confirmPassword) return toast.error("Passwords do not match");

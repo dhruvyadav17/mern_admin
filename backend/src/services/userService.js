@@ -150,7 +150,8 @@ const createUser = async ({
             password: await hashPassword(password),
             role: roleList[0],
             roles: roleList,
-            status
+            status,
+            emailVerifiedAt: new Date()
         });
 
         return toUserResponse(user);

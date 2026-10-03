@@ -48,6 +48,11 @@ const userSchema = new mongoose.Schema(
       default: USER_STATUS.ACTIVE,
     },
 
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+
     permissionOverrides: {
       allow: {
         type: [String],

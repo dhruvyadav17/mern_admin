@@ -7,7 +7,10 @@ const {
     forgotPassword,
     resetPassword,
     changePassword,
-    updateProfile
+    updateProfile,
+    csrf,
+    verifyEmail,
+    resendVerification
 } = require("../controllers/authController");
 const { protect } = require("../middleware/authMiddleware");
 const { requirePermission } = require("../middleware/permissionMiddleware");
@@ -18,7 +21,9 @@ const {
     loginValidation,
     forgotPasswordValidation,
     resetPasswordValidation,
-    changePasswordValidation
+    changePasswordValidation,
+    verifyEmailValidation,
+    resendVerificationValidation
 } = require("../validators/authValidator");
 const {
     loginRateLimit,
@@ -28,6 +33,8 @@ const {
 
 const router = express.Router();
 const { body } = require("express-validator");
+
+router.get("/csrf", asyncHandler(csrf));
 
 router.post(
     "/register",
@@ -48,6 +55,8 @@ router.post(
 
 router.post("/forgot-password", forgotPasswordRateLimit, forgotPasswordValidation, validate, asyncHandler(forgotPassword));
 router.post("/reset-password", resetPasswordValidation, validate, asyncHandler(resetPassword));
+router.post("/verify-email", verifyEmailValidation, validate, asyncHandler(verifyEmail));
+router.post("/resend-verification", forgotPasswordRateLimit, resendVerificationValidation, validate, asyncHandler(resendVerification));
 
 router.get(
     "/me",

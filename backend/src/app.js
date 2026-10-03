@@ -16,6 +16,7 @@ const settingsRoutes = require("./routes/settingsRoutes");
 const searchRoutes = require("./routes/searchRoutes");
 const errorMiddleware = require("./middleware/errorMiddleware");
 const csrfProtection = require("./middleware/csrfMiddleware");
+const maintenanceMiddleware = require("./middleware/maintenanceMiddleware");
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(csrfProtection);
+app.use(maintenanceMiddleware);
 
 app.get("/api/health", (req, res) => {
     res.json({

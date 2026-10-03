@@ -10,6 +10,40 @@ const api = axios.create({
     }
 });
 
+let csrfToken = "";
+let csrfRequest = null;
+
+const unsafeMethods = new Set(["post", "put", "patch", "delete"]);
+
+const fetchCsrfToken = async () => {
+    if (csrfToken) return csrfToken;
+    if (!csrfRequest) {
+        csrfRequest = api
+            .get("/auth/csrf", { skipCsrf: true })
+            .then((response) => response.data?.data?.csrfToken || "")
+            .finally(() => {
+                csrfRequest = null;
+            });
+    }
+    csrfToken = await csrfRequest;
+    return csrfToken;
+};
+
+api.interceptors.request.use(async (config) => {
+    if (
+        !config.skipCsrf &&
+        unsafeMethods.has(String(config.method || "get").toLowerCase())
+    ) {
+        const token = await fetchCsrfToken();
+        if (token) {
+            config.headers = config.headers || {};
+            config.headers["X-CSRF-Token"] = token;
+        }
+    }
+
+    return config;
+});
+
 const authRoutes = [
     "/auth/login",
     "/auth/register",
@@ -19,7 +53,21 @@ const authRoutes = [
 
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
+    async (error) => {
+        const originalRequest = error.config || {};
+        if (
+            error.response?.status === 403 &&
+            error.response?.data?.message === "Invalid CSRF token" &&
+            !originalRequest._csrfRetry
+        ) {
+            csrfToken = "";
+            originalRequest._csrfRetry = true;
+            const token = await fetchCsrfToken();
+            originalRequest.headers = originalRequest.headers || {};
+            originalRequest.headers["X-CSRF-Token"] = token;
+            return api(originalRequest);
+        }
+
         const requestUrl = error.config?.url || "";
         const isAuthRequest = authRoutes.some((route) =>
             requestUrl.includes(route)
