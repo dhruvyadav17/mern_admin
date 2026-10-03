@@ -1,40 +1,13 @@
 const { body } = require("express-validator");
 
-const nameValidation = body("name")
-    .trim()
-    .notEmpty()
-    .withMessage("Name is required")
-    .isLength({ max: 100 })
-    .withMessage("Name must not exceed 100 characters");
+const nameValidation = body("name").trim().notEmpty().withMessage("Name is required").isLength({ max: 100 }).withMessage("Name must not exceed 100 characters");
+const emailValidation = body("email").trim().notEmpty().withMessage("Email is required").isEmail().withMessage("Please enter a valid email").normalizeEmail();
+const passwordValidation = body("password").notEmpty().withMessage("Password is required").isLength({ min: 8, max: 128 }).withMessage("Password must be 8 to 128 characters");
 
-const emailValidation = body("email")
-    .trim()
-    .notEmpty()
-    .withMessage("Email is required")
-    .isEmail()
-    .withMessage("Please enter a valid email")
-    .normalizeEmail();
+const registerValidation = [nameValidation, emailValidation, passwordValidation];
+const loginValidation = [emailValidation, body("password").notEmpty().withMessage("Password is required")];
+const forgotPasswordValidation = [emailValidation];
+const resetPasswordValidation = [body("token").trim().notEmpty().withMessage("Reset token is required"), passwordValidation];
+const changePasswordValidation = [body("currentPassword").notEmpty().withMessage("Current password is required"), passwordValidation];
 
-const passwordValidation = body("password")
-    .notEmpty()
-    .withMessage("Password is required")
-    .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters");
-
-const registerValidation = [
-    nameValidation,
-    emailValidation,
-    passwordValidation
-];
-
-const loginValidation = [
-    emailValidation,
-    body("password")
-        .notEmpty()
-        .withMessage("Password is required")
-];
-
-module.exports = {
-    registerValidation,
-    loginValidation
-};
+module.exports = { registerValidation, loginValidation, forgotPasswordValidation, resetPasswordValidation, changePasswordValidation };

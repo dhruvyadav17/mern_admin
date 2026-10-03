@@ -1,5 +1,25 @@
 const errorMiddleware = (err, req, res, next) => {
-    console.error(err);
+    console.error("\n==============================================");
+    console.error("GLOBAL ERROR MIDDLEWARE");
+    console.error("==============================================");
+    console.error("METHOD:", req.method);
+    console.error("URL:", req.originalUrl);
+    console.error("PARAMS:", req.params);
+    console.error("BODY:", req.body);
+    console.error("USER ID:", req.user?._id);
+    console.error("USER EMAIL:", req.user?.email);
+    console.error("PERMISSIONS:", req.permissions);
+    console.error("----------------------------------------------");
+    console.error("ERROR NAME:", err?.name);
+    console.error("ERROR MESSAGE:", err?.message);
+    console.error("ERROR CODE:", err?.code);
+    console.error("ERROR STATUS:", err?.status);
+    console.error("ERROR STATUS CODE:", err?.statusCode);
+    console.error("ERROR OPERATIONAL:", err?.isOperational);
+    console.error("----------------------------------------------");
+    console.error("ERROR STACK:");
+    console.error(err?.stack);
+    console.error("==============================================\n");
 
     let statusCode = err.statusCode || 500;
     let message = err.isOperational
@@ -27,10 +47,20 @@ const errorMiddleware = (err, req, res, next) => {
         message = "Invalid JSON payload";
     }
 
-    return res.status(statusCode).json({
+    const response = {
         success: false,
-        message
-    });
+        message,
+    };
+
+    // Development diagnostics only. Do not expose stack traces in production.
+    if (process.env.NODE_ENV !== "production") {
+        response.debug = err?.message;
+        response.error = err?.name;
+        response.code = err?.code;
+        response.stack = err?.stack;
+    }
+
+    return res.status(statusCode).json(response);
 };
 
 module.exports = errorMiddleware;

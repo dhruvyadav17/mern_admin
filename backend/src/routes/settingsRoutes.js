@@ -1,0 +1,10 @@
+const express = require("express");
+const { protect } = require("../middleware/authMiddleware");
+const { requirePermission } = require("../middleware/permissionMiddleware");
+const asyncHandler = require("../utils/asyncHandler");
+const controller = require("../controllers/settingsController");
+const router = express.Router();
+router.get("/public", asyncHandler(controller.publicSettings));
+router.get("/", protect, requirePermission("settings.view"), asyncHandler(controller.list));
+router.put("/", protect, requirePermission("settings.manage"), asyncHandler(controller.update));
+module.exports = router;

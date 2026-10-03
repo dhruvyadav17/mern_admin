@@ -1,13 +1,10 @@
 import api from "../api/axios";
-
 const login = (data) => api.post("/auth/login", data);
 const register = (data) => api.post("/auth/register", data);
 const getMe = () => api.get("/auth/me");
 const logout = () => api.post("/auth/logout");
-
-export default {
-    login,
-    register,
-    getMe,
-    logout
-};
+const forgotPassword = (email) => api.post("/auth/forgot-password", { email });
+const resetPassword = (data) => api.post("/auth/reset-password", data);
+const changePassword = (data) => api.put("/auth/change-password", data);
+const updateProfile = (data) => api.put("/auth/profile", data);
+export default { login, register, getMe, logout, forgotPassword, resetPassword, changePassword, updateProfile };

@@ -1,7 +1,2 @@
 import api from "../api/axios";
-
-const getStats = () => api.get("/dashboard/stats");
-
-export default {
-    getStats
-};
+export const getDashboardStats = () => api.get("/dashboard/stats");

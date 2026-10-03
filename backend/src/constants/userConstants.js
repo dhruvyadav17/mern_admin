@@ -5,7 +5,8 @@ const USER_ROLES = {
 
 const USER_STATUS = {
     ACTIVE: "active",
-    INACTIVE: "inactive"
+    INACTIVE: "inactive",
+    SUSPENDED: "suspended"
 };
 
 const USER_ROLE_VALUES = Object.values(USER_ROLES);

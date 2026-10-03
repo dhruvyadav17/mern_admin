@@ -16,13 +16,24 @@ const protect = async (req, res, next) => {
             });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+            issuer: "mern-admin-api",
+            audience: "mern-admin-web"
+        });
+
         const user = await User.findById(decoded.userId);
 
         if (!user) {
             return res.status(401).json({
                 success: false,
                 message: "User not found"
+            });
+        }
+
+        if ((decoded.authVersion ?? 0) !== (user.authVersion || 0)) {
+            return res.status(401).json({
+                success: false,
+                message: "Session expired. Please log in again."
             });
         }
 

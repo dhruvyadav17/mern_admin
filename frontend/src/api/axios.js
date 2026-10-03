@@ -13,7 +13,8 @@ const api = axios.create({
 const authRoutes = [
     "/auth/login",
     "/auth/register",
-    "/auth/logout"
+    "/auth/logout",
+    "/auth/me"
 ];
 
 api.interceptors.response.use(

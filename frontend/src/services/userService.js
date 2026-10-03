@@ -6,9 +6,13 @@ const getUser = (id) => api.get(`/users/${id}`);
 
 const createUser = (data) => api.post("/users", data);
 
-const updateUser = (id, data) => api.put(`/users/${id}`, data);
+const updateUser = (id, data) => api.patch(`/users/${id}`, data);
 
 const deleteUser = (id) => api.delete(`/users/${id}`);
+
+const getActivity = (id, params) => api.get(`/users/${id}/activity`, { params });
+
+const exportUsers = () => api.get("/users/export", { responseType: "blob" });
 
 const updateStatus = (id, status) =>
     api.patch(`/users/${id}/status`, { status });
@@ -19,5 +23,7 @@ export default {
     createUser,
     updateUser,
     deleteUser,
-    updateStatus
+    updateStatus,
+    getActivity,
+    exportUsers
 };

@@ -21,15 +21,12 @@ const createUserValidation = [
         .normalizeEmail(),
 
     body("password")
-        .notEmpty()
-        .withMessage("Password is required")
-        .isLength({ min: 6 })
-        .withMessage("Password must be at least 6 characters"),
+        .custom((value) => typeof value === "string" && value.trim().length >= 8 && value.length <= 128)
+        .withMessage("Password must be 8 to 128 characters"),
 
-    body("role")
-        .optional()
-        .isIn(USER_ROLE_VALUES)
-        .withMessage("Invalid role"),
+    body("role").optional().trim().matches(/^[a-z0-9_-]{2,50}$/i).withMessage("Invalid role"),
+    body("roles").optional().isArray({ min: 1, max: 20 }).withMessage("At least one role is required"),
+    body("roles.*").optional().trim().matches(/^[a-z0-9_-]{2,50}$/i).withMessage("Invalid role"),
 
     body("status")
         .optional()
@@ -54,14 +51,13 @@ const updateUserValidation = [
         .normalizeEmail(),
 
     body("password")
-        .optional()
-        .isLength({ min: 6 })
-        .withMessage("Password must be at least 6 characters"),
+        .optional({ nullable: true })
+        .custom((value) => value === "" || (typeof value === "string" && value.trim().length >= 8 && value.length <= 128))
+        .withMessage("Password must be empty or 8 to 128 characters"),
 
-    body("role")
-        .optional()
-        .isIn(USER_ROLE_VALUES)
-        .withMessage("Invalid role"),
+    body("role").optional().trim().matches(/^[a-z0-9_-]{2,50}$/i).withMessage("Invalid role"),
+    body("roles").optional().isArray({ min: 1, max: 20 }).withMessage("At least one role is required"),
+    body("roles.*").optional().trim().matches(/^[a-z0-9_-]{2,50}$/i).withMessage("Invalid role"),
 
     body("status")
         .optional()

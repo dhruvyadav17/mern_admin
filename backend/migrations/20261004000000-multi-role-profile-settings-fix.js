@@ -1,0 +1,6 @@
+const PERMISSIONS=[
+ ["profile.update","Update own profile","Profile","Update your own name and email"],
+ ["users.role.assign","Assign user roles","Users","Assign one or more roles to users"],
+ ["users.role.assign.system","Assign protected system roles","Users","Assign protected system roles"]
+];
+module.exports={async up(db){const now=new Date();for(const [key,label,group,description] of PERMISSIONS){const [resource,...rest]=key.split(".");await db.collection("permissions").updateOne({key},{$set:{key,label,group,resource,action:rest.join("."),description,isSystem:true,updatedAt:now},$setOnInsert:{createdAt:now}},{upsert:true})}const users=await db.collection("users").find({}).toArray();for(const u of users){const roles=Array.isArray(u.roles)&&u.roles.length?u.roles:[u.role||"user"];await db.collection("users").updateOne({_id:u._id},{$set:{roles:[...new Set(roles.map(r=>String(r).toLowerCase()))],updatedAt:now}})}await db.collection("users").createIndex({roles:1});await db.collection("roles").updateOne({name:"user"},{$addToSet:{permissions:"profile.update"},$set:{updatedAt:now}});},async down(db){await db.collection("users").updateMany({roles:{$exists:true}},{$unset:{roles:""}});await db.collection("permissions").deleteMany({key:{$in:["profile.update"]}})}};
