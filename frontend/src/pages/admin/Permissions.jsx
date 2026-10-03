@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import Modal from "../../components/common/Modal";
 import Pagination from "../../components/common/Pagination";
 import { Can } from "../../context/PermissionContext";
+import useClientPagination from "../../hooks/useClientPagination";
+import useToastError from "../../hooks/useToastError";
 import {
   createPermission,
   deletePermission,
@@ -19,31 +21,27 @@ export default function Permissions() {
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
   const [form, setForm] = useState(blank);
   const [saving, setSaving] = useState(false);
+  const showError = useToastError();
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const response = await getPermissions();
       setPermissions(response.data.data || []);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Unable to load permissions");
+      showError(error, "Unable to load permissions");
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
 
   useEffect(() => {
     load();
-  }, []);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search]);
+  }, [load]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -55,8 +53,9 @@ export default function Permissions() {
     );
   }, [permissions, search]);
 
-  const rows = filtered.slice((page - 1) * limit, page * limit);
-  const totalPages = Math.ceil(filtered.length / limit) || 1;
+  const { page, rows, setPage, totalPages } = useClientPagination(filtered, {
+    limit,
+  });
 
   const openCreate = () => {
     setEdit(null);
@@ -102,7 +101,7 @@ export default function Permissions() {
       close();
       await load();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Unable to save permission");
+      showError(error, "Unable to save permission");
     } finally {
       setSaving(false);
     }
@@ -115,7 +114,7 @@ export default function Permissions() {
       toast.success("Permission deleted");
       await load();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Unable to delete permission");
+      showError(error, "Unable to delete permission");
     }
   };
 
@@ -204,7 +203,10 @@ export default function Permissions() {
               className="form-control form-control-sm"
               placeholder="Search permissions"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
             />
           </div>
           <Can permission="permissions.manage">

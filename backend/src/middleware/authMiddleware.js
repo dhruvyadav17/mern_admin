@@ -1,13 +1,10 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const {
-    USER_ROLES,
-    USER_STATUS
-} = require("../constants/userConstants");
+const { USER_ROLES } = require("../constants/userConstants");
+const { AUTH_COOKIE_NAME } = require("../config/security");
+const { resolveAuthenticatedUser, userHasRole } = require("../utils/authSession");
 
 const protect = async (req, res, next) => {
     try {
-        const token = req.cookies?.token;
+        const token = req.cookies?.[AUTH_COOKIE_NAME];
 
         if (!token) {
             return res.status(401).json({
@@ -16,32 +13,18 @@ const protect = async (req, res, next) => {
             });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-            issuer: "mern-admin-api",
-            audience: "mern-admin-web"
-        });
-
-        const user = await User.findById(decoded.userId);
+        const { user, reason } = await resolveAuthenticatedUser(token);
 
         if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: "User not found"
-            });
-        }
-
-        if ((decoded.authVersion ?? 0) !== (user.authVersion || 0)) {
-            return res.status(401).json({
-                success: false,
-                message: "Session expired. Please log in again."
-            });
-        }
-
-        if (user.status !== USER_STATUS.ACTIVE) {
-            return res.status(403).json({
-                success: false,
-                message: "User account is inactive"
-            });
+            const message = reason === "not_found"
+                ? "User not found"
+                : reason === "stale"
+                    ? "Session expired. Please log in again."
+                    : reason === "inactive"
+                        ? "User account is inactive"
+                        : "Invalid or expired token";
+            const status = reason === "inactive" ? 403 : 401;
+            return res.status(status).json({ success: false, message });
         }
 
         req.user = user;
@@ -62,7 +45,7 @@ const adminOnly = (req, res, next) => {
         });
     }
 
-    if (req.user.role !== USER_ROLES.ADMIN) {
+    if (!userHasRole(req.user, USER_ROLES.ADMIN)) {
         return res.status(403).json({
             success: false,
             message: "Admin access required"

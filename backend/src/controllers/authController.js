@@ -8,6 +8,7 @@ const passwordResetService = require("../services/passwordResetService");
 const { hashPassword, comparePassword } = require("../utils/password");
 const AppError = require("../utils/AppError");
 const settingsService = require("../services/settingsService");
+const { AUTH_COOKIE_NAME } = require("../config/security");
 const { clearAuthCookieOptions, getAuthCookieOptions } = require("../config/cookie");
 const { minutesToMilliseconds } = require("../utils/sessionPolicy");
 const {
@@ -22,7 +23,7 @@ const register = async (req, res) => successResponse(res, await authService.regi
 const login = async (req, res) => {
     const { token, user, sessionTimeoutMinutes } = await authService.loginUser(req.body);
     res.cookie(
-        "token",
+        AUTH_COOKIE_NAME,
         token,
         getAuthCookieOptions(minutesToMilliseconds(sessionTimeoutMinutes))
     );
@@ -47,7 +48,7 @@ const changePassword = async (req, res) => {
     user.authVersion = (user.authVersion || 0) + 1;
     await user.save();
     await audit(req, "password.change", "User", req.user._id);
-    res.clearCookie("token", clearAuthCookieOptions);
+    res.clearCookie(AUTH_COOKIE_NAME, clearAuthCookieOptions);
     return successResponse(res, null, "Password changed successfully. Please login again.");
 };
 
@@ -104,7 +105,7 @@ const logout = async (req, res) => {
     req.user.authVersion = (req.user.authVersion || 0) + 1;
     await req.user.save();
     await audit(req, "auth.logout", "User", req.user._id);
-    res.clearCookie("token", clearAuthCookieOptions);
+    res.clearCookie(AUTH_COOKIE_NAME, clearAuthCookieOptions);
     res.clearCookie(CSRF_COOKIE_NAME, csrfCookieOptions);
     return successResponse(res, null, "Logout successful");
 };

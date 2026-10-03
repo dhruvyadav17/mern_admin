@@ -11,6 +11,7 @@ const { getEffectivePermissions } = require("../middleware/permissionMiddleware"
 const settingsService = require("./settingsService");
 const AuditLog = require("../models/AuditLog");
 const emailVerificationService = require("./emailVerificationService");
+const { JWT_OPTIONS } = require("../config/security");
 const {
     normalizeSessionTimeoutMinutes,
     minutesToSeconds
@@ -86,8 +87,7 @@ const loginUser = async ({ email, password }) => {
         process.env.JWT_SECRET,
         {
             expiresIn: minutesToSeconds(sessionTimeoutMinutes),
-            issuer: "mern-admin-api",
-            audience: "mern-admin-web"
+            ...JWT_OPTIONS
         }
     );
 

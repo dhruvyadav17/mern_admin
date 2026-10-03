@@ -1,5 +1,18 @@
 const AuditLog = require("../models/AuditLog");
 const log = async (req, action, targetType, targetId, details = {}) => AuditLog.create({ actorId: req.user?._id || req.user?.id, action, targetType, targetId: targetId?.toString(), details, ip: req.ip, userAgent: typeof req.get === "function" ? req.get("user-agent") : undefined });
+const safeLog = async (req, action, targetType, targetId, details = {}) => {
+    try {
+        return await log(req, action, targetType, targetId, details);
+    } catch (error) {
+        console.error("Audit log failed", {
+            action,
+            targetType,
+            targetId: targetId?.toString?.(),
+            error: error?.message
+        });
+        return null;
+    }
+};
 const list = async ({ page = 1, limit = 25, search = "", action = "", actorId = "", from = "", to = "" }) => {
     page = Math.max(1, Number(page) || 1); limit = Math.min(100, Math.max(1, Number(limit) || 25));
     const filter = {};
@@ -13,4 +26,4 @@ const list = async ({ page = 1, limit = 25, search = "", action = "", actorId = 
     ]);
     return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 } };
 };
-module.exports = { log, list };
+module.exports = { log, safeLog, list };

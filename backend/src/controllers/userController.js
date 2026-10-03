@@ -1,43 +1,12 @@
 const userService = require("../services/userService");
 const { successResponse } = require("../utils/response");
-const { log: audit } = require("../services/auditService");
-const AppError = require("../utils/AppError");
+const { log: audit, safeLog: safeAudit } = require("../services/auditService");
 const User = require("../models/User");
-const Role = require("../models/Role");
-const assertPermission = (req, p, message) => {
-  if (!req.permissions?.includes(p) && !req.permissions?.includes("*"))
-    throw new AppError(message, 403);
-};
-const normalizeRoles = (body) => {
-  if (Array.isArray(body.roles) && body.roles.length)
-    return [
-      ...new Set(
-        body.roles.map((x) => String(x).trim().toLowerCase()).filter(Boolean),
-      ),
-    ];
-  if (typeof body.role === "string" && body.role.trim())
-    return [body.role.trim().toLowerCase()];
-  return undefined;
-};
-const guardRoles = async (req, roles) => {
-  if (!roles) return;
-  assertPermission(
-    req,
-    "users.role.assign",
-    "You do not have permission to assign roles",
-  );
-  const target = await Role.find({ name: { $in: roles } })
-    .select("name isSystem")
-    .lean();
-  if (target.length !== roles.length)
-    throw new AppError("One or more roles not found", 400);
-  if (target.some((r) => r.isSystem && r.name !== "user"))
-    assertPermission(
-      req,
-      "users.role.assign.system",
-      "You do not have permission to assign protected system roles",
-    );
-};
+const {
+  assertPermission,
+  guardAssignableRoles,
+  normalizeRoles,
+} = require("../utils/accessPolicy");
 const getUsers = async (req, res) => {
   const result = await userService.getUsers(req.query);
   return successResponse(res, result.users, "Users fetched successfully", 200, {
@@ -46,7 +15,7 @@ const getUsers = async (req, res) => {
 };
 const createUser = async (req, res) => {
   const roles = normalizeRoles(req.body);
-  await guardRoles(req, roles);
+  await guardAssignableRoles(req, roles);
   if (req.body.status && req.body.status !== "active")
     assertPermission(
       req,
@@ -76,7 +45,7 @@ const updateUser = async (req, res) => {
 //   console.log("req.body", req.body);
 //   return successResponse(req.body, user, "User updated successfully");
   const roles = normalizeRoles(req.body);
-  await guardRoles(req, roles);
+  await guardAssignableRoles(req, roles);
   if (req.body.status !== undefined)
     assertPermission(
       req,
@@ -100,13 +69,9 @@ const updateUser = async (req, res) => {
     payload,
     req.user._id,
   );
-  try {
-    await audit(req, "user.update", "User", user.id, {
-      changes: Object.keys(payload),
-    });
-  } catch (auditError) {
-    console.error("Audit log failed after user update", auditError);
-  }
+  await safeAudit(req, "user.update", "User", user.id, {
+    changes: Object.keys(payload),
+  });
   return successResponse(res, user, "User updated successfully");
 };
 const deleteUser = async (req, res) => {
