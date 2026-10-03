@@ -19,6 +19,14 @@ const isValidCsrfToken = (token) => {
 
     const [nonce, signature, extra] = token.split(".");
     if (!nonce || !signature || extra) return false;
+    if (
+        !/^[a-f0-9]+$/i.test(nonce) ||
+        nonce.length !== TOKEN_BYTES * 2 ||
+        !/^[a-f0-9]+$/i.test(signature) ||
+        signature.length !== 64
+    ) {
+        return false;
+    }
 
     const expected = sign(nonce);
     const actualBuffer = Buffer.from(signature, "hex");

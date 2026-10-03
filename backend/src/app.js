@@ -29,7 +29,7 @@ app.use(
         origin: process.env.CLIENT_URL,
         credentials: true,
         methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"]
+        allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"]
     })
 );
 

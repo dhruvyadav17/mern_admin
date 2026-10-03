@@ -7,6 +7,7 @@ const { log: audit } = require("../services/auditService");
 const passwordResetService = require("../services/passwordResetService");
 const { hashPassword, comparePassword } = require("../utils/password");
 const AppError = require("../utils/AppError");
+const settingsService = require("../services/settingsService");
 const { clearAuthCookieOptions, getAuthCookieOptions } = require("../config/cookie");
 const { minutesToMilliseconds } = require("../utils/sessionPolicy");
 const {
@@ -72,11 +73,31 @@ const resendVerification = async (req, res) => {
 const updateProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) throw new AppError("User not found", 404);
+    const previousEmail = user.email;
+    const nextEmail = req.body.email.toLowerCase();
+    const emailChanged = nextEmail !== previousEmail;
     user.name = req.body.name;
-    user.email = req.body.email.toLowerCase();
+    user.email = nextEmail;
+    if (emailChanged) {
+        const verificationRequired = await settingsService.getValue(
+            "registration.email_verification",
+            false
+        );
+        user.emailVerifiedAt = verificationRequired ? null : new Date();
+    }
     try { await user.save(); } catch (error) { if (error?.code === 11000) throw new AppError("Email already registered", 409); throw error; }
+    const verification = emailChanged
+        ? await emailVerificationService.requestVerificationForUser(user)
+        : null;
     await audit(req, "profile.update", "User", user._id, { changes: ["name", "email"] });
-    return successResponse(res, toUserResponse(user, await getEffectivePermissions(user)), "Profile updated successfully");
+    return successResponse(
+        res,
+        {
+            ...toUserResponse(user, await getEffectivePermissions(user)),
+            ...(verification?.verificationToken ? { verificationToken: verification.verificationToken } : {})
+        },
+        "Profile updated successfully"
+    );
 };
 
 const logout = async (req, res) => {
