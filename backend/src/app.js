@@ -17,6 +17,7 @@ const searchRoutes = require("./routes/searchRoutes");
 const errorMiddleware = require("./middleware/errorMiddleware");
 const csrfProtection = require("./middleware/csrfMiddleware");
 const maintenanceMiddleware = require("./middleware/maintenanceMiddleware");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 const app = express();
 
@@ -55,6 +56,8 @@ app.use("/api/audit-logs", auditRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/search", searchRoutes);
 
+app.use("/api/notifications", notificationRoutes);
+
 app.use((req, res) => {
     res.status(404).json({
         success: false,
@@ -65,3 +68,4 @@ app.use((req, res) => {
 app.use(errorMiddleware);
 
 module.exports = app;
+

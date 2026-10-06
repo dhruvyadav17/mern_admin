@@ -7,9 +7,12 @@
     "test": "node --test",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "seed": "node seeders/userSeeder.js",
+    "seed": "node seeders/databaseSeeder.js",
+    "seed:sample": "node seeders/sampleDataSeeder.js",
+    "seed:all": "npm run seed && npm run seed:sample",
     "db:migrate": "migrate-mongo up",
-    "db:rollback": "migrate-mongo down"
+    "db:rollback": "migrate-mongo down",
+    "db:reset": "node scripts/resetDatabase.js"
   },
   "keywords": [],
   "author": "",

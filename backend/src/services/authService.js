@@ -20,7 +20,7 @@ const {
 const registerUser = async ({ name, email, password }) => {
     const registrationEnabled = await settingsService.getValue("registration.enabled", false);
     if (registrationEnabled !== true) throw new AppError("Public registration is disabled", 403);
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
 
     const existingUser = await User.findOne({ email: normalizedEmail });
 
@@ -37,7 +37,7 @@ const registerUser = async ({ name, email, password }) => {
         name,
         email: normalizedEmail,
         password: await hashPassword(password),
-        role: USER_ROLES.USER,
+        roles: [USER_ROLES.USER],
         status: USER_STATUS.ACTIVE,
         emailVerifiedAt: verificationRequired ? null : new Date()
     });
@@ -48,7 +48,7 @@ const registerUser = async ({ name, email, password }) => {
 };
 
 const loginUser = async ({ email, password }) => {
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
 
     const user = await User.findOne({
         email: normalizedEmail
@@ -81,7 +81,7 @@ const loginUser = async ({ email, password }) => {
     const token = jwt.sign(
         {
             userId: user._id.toString(),
-            role: user.role,
+            roles: user.roles || [],
             authVersion: user.authVersion || 0
         },
         process.env.JWT_SECRET,
@@ -102,3 +102,4 @@ module.exports = {
     registerUser,
     loginUser
 };
+

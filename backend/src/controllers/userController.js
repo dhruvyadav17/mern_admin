@@ -2,11 +2,18 @@ const userService = require("../services/userService");
 const { successResponse } = require("../utils/response");
 const { log: audit, safeLog: safeAudit } = require("../services/auditService");
 const User = require("../models/User");
+
 const {
   assertPermission,
   guardAssignableRoles,
   normalizeRoles,
 } = require("../utils/accessPolicy");
+
+const notificationService = require("../services/notificationService");
+const {
+  NOTIFICATION_TYPES,
+} = require("../constants/notificationTypes");
+
 const getUsers = async (req, res) => {
   const result = await userService.getUsers(req.query);
   return successResponse(res, result.users, "Users fetched successfully", 200, {
@@ -27,6 +34,19 @@ const createUser = async (req, res) => {
     email: user.email,
     roles: user.roles,
   });
+
+  try {
+      await notificationService.createNotification({
+        recipient: user.id,
+        type: NOTIFICATION_TYPES.USER_CREATED,
+        title: "Welcome",
+        message: "Your account has been created successfully.",
+        link: "/profile",
+      });
+  } catch (notificationError) {
+    console.error("Failed to create user notification:", notificationError);
+  }
+
   return successResponse(res, user, "User created successfully", 201);
 };
 const getUserById = async (req, res) =>
@@ -42,8 +62,6 @@ const getUserActivity = async (req, res) =>
     "User activity fetched successfully",
   );
 const updateUser = async (req, res) => {
-//   console.log("req.body", req.body);
-//   return successResponse(req.body, user, "User updated successfully");
   const roles = normalizeRoles(req.body);
   await guardAssignableRoles(req, roles);
   if (req.body.status !== undefined)
@@ -95,7 +113,7 @@ const exportUsers = async (req, res) => {
     ...users.map((u) => [
       u.name,
       u.email,
-      (u.roles?.length ? u.roles : [u.role]).join("|"),
+      (u.roles || []).join("|"),
       u.status,
       u.createdAt,
     ]),

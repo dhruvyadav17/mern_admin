@@ -70,9 +70,9 @@ const updateRolePermissions = async (roleId, permissions) => {
 };
 
 const getUserOverrides = async (userId) => {
-    const user = await User.findById(userId).select("name email role roles permissionOverrides status").lean();
+    const user = await User.findById(userId).select("name email roles permissionOverrides status").lean();
     if (!user) throw new AppError("User not found", 404);
-    const roles = user.roles?.length ? user.roles : [user.role];
+    const roles = Array.isArray(user.roles) ? user.roles : [];
     const roleDocs = await Role.find({ name: { $in: roles } }).select("name label permissions parentRole").lean();
     const inheritedSet = new Set();
     for (const roleName of roles) {
@@ -109,10 +109,10 @@ const setUserPermission = async (userId, permissionKey, enabled) => {
     if (!key) throw new AppError("Permission key is required", 400);
     if (!(await Permission.exists({ key }))) throw new AppError("Permission not found", 404);
 
-    const target = await User.findById(userId).select("roles role permissionOverrides authVersion name email status");
+    const target = await User.findById(userId).select("roles permissionOverrides authVersion name email status");
     if (!target) throw new AppError("User not found", 404);
 
-    const roleNames = target.roles?.length ? target.roles : [target.role];
+    const roleNames = Array.isArray(target.roles) ? target.roles : [];
     const inherited = new Set();
     for (const roleName of roleNames) {
         const rolePermissions = await collectRolePermissions(roleName);
@@ -170,3 +170,4 @@ module.exports = {
     setUserPermission,
     sanitize
 };
+

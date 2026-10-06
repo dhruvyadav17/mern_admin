@@ -11,6 +11,7 @@ const { hashPassword } = require("../utils/password");
 const { toUserResponse, toUserListResponse } = require("../utils/userMapper");
 const { getPagination, getPaginationMeta } = require("../utils/pagination");
 const { log: audit } = require("./auditService");
+const settingsService = require("./settingsService");
 
 const ADMIN_LOCK_ID = "active-admin-mutation";
 const ADMIN_LOCK_TTL_MS = 30_000;
@@ -79,7 +80,7 @@ const withActiveAdminLock = async (operation) => {
 
 const ensureActiveAdminWillRemain = async (excludeUserId) => {
     const activeAdminCount = await User.countDocuments({
-        $or: [{ role: USER_ROLES.ADMIN }, { roles: USER_ROLES.ADMIN }],
+        roles: USER_ROLES.ADMIN,
         status: USER_STATUS.ACTIVE,
         ...(excludeUserId ? { _id: { $ne: excludeUserId } } : {})
     });
@@ -133,7 +134,7 @@ const createUser = async ({
 }) => {
     const normalizedEmail = email.toLowerCase();
 
-    const roleList = [...new Set((roles?.length ? roles : [role]).map(r => String(r).toLowerCase()))];
+    const roleList = [...new Set((roles?.length ? roles : [role || USER_ROLES.USER]).map(r => String(r).toLowerCase()))];
     const foundRoles = await Role.find({ name: { $in: roleList } }).select("name").lean();
     if (foundRoles.length !== roleList.length) throw new AppError("One or more roles not found", 400);
 
@@ -148,7 +149,6 @@ const createUser = async ({
             name,
             email: normalizedEmail,
             password: await hashPassword(password),
-            role: roleList[0],
             roles: roleList,
             status,
             emailVerifiedAt: new Date()
@@ -221,7 +221,7 @@ const updateUser = async (id, data, currentUserId) => {
 
         const actorId = currentUserId?.toString?.();
         const isSelf = Boolean(actorId && user._id.toString() === actorId);
-        const currentRoles = user.roles?.length ? user.roles : [user.role];
+        const currentRoles = Array.isArray(user.roles) ? user.roles : [];
 
         const nextRoles = normalizedData.roles !== undefined
             ? normalizedData.roles
@@ -248,7 +248,8 @@ const updateUser = async (id, data, currentUserId) => {
             }
         }
 
-        if (normalizedData.email !== undefined && normalizedData.email !== user.email) {
+        const emailChanged = normalizedData.email !== undefined && normalizedData.email !== user.email;
+        if (emailChanged) {
             const existingUser = await User.findOne({
                 email: normalizedData.email,
                 _id: { $ne: user._id }
@@ -256,6 +257,8 @@ const updateUser = async (id, data, currentUserId) => {
 
             if (existingUser) throw new AppError("Email already registered", 409);
             user.email = normalizedData.email;
+            const verificationRequired = await settingsService.getValue("registration.email_verification", false);
+            user.emailVerifiedAt = verificationRequired ? null : new Date();
         }
 
         if (normalizedData.name !== undefined) user.name = normalizedData.name;
@@ -272,18 +275,16 @@ const updateUser = async (id, data, currentUserId) => {
             await ensureActiveAdminWillRemain(user._id);
         }
 
-        const previousRoles = user.roles?.length ? user.roles : [user.role];
+        const previousRoles = Array.isArray(user.roles) ? user.roles : [];
         const rolesChanged = JSON.stringify(previousRoles) !== JSON.stringify(nextRoles);
-        const roleChanged = normalizedData.role !== undefined && normalizedData.role !== user.role;
+        const roleChanged = normalizedData.role !== undefined && normalizedData.roles === undefined;
         const statusChanged = normalizedData.status !== undefined && normalizedData.status !== user.status;
         const passwordChanged = Boolean(normalizedData.password);
-        const securityChange = passwordChanged || rolesChanged || roleChanged || statusChanged;
+        const securityChange = passwordChanged || rolesChanged || roleChanged || statusChanged || emailChanged;
 
         if (normalizedData.roles !== undefined) {
             user.roles = normalizedData.roles;
-            user.role = normalizedData.roles[0];
         } else if (normalizedData.role !== undefined) {
-            user.role = normalizedData.role;
             user.roles = [normalizedData.role];
         }
 
@@ -321,7 +322,7 @@ const deleteUser = async (id, currentUserId) => {
         }
 
         if (
-            (user.roles?.includes(USER_ROLES.ADMIN) || user.role === USER_ROLES.ADMIN) &&
+            user.roles?.includes(USER_ROLES.ADMIN) &&
             user.status === USER_STATUS.ACTIVE
         ) {
             await ensureActiveAdminWillRemain(user._id);
@@ -348,7 +349,7 @@ const updateUserStatus = async (id, status, currentUserId) => {
         }
 
         if (
-            (user.roles?.includes(USER_ROLES.ADMIN) || user.role === USER_ROLES.ADMIN) &&
+            user.roles?.includes(USER_ROLES.ADMIN) &&
             user.status === USER_STATUS.ACTIVE &&
             status === USER_STATUS.INACTIVE
         ) {
@@ -387,3 +388,4 @@ module.exports = {
     updateUserStatus,
     getUserActivity
 };
+

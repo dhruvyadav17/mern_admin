@@ -7,3 +7,4 @@ const asyncHandler = (controller) => {
 };
 
 module.exports = asyncHandler;
+

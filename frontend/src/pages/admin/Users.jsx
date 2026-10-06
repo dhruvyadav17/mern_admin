@@ -75,7 +75,7 @@ export default function Users() {
       name: user.name || "",
       email: user.email || "",
       password: "",
-      roles: user.roles?.length ? [...user.roles] : [user.role],
+      roles: user.roles ? [...user.roles] : [],
       status: user.status || "active",
     });
     setFormOpen(true);
@@ -203,7 +203,7 @@ export default function Users() {
       label: "Roles",
       render: (user) => (
         <div className="d-flex flex-wrap gap-1">
-          {(user.roles || [user.role]).map((role) => (
+          {(user.roles || []).map((role) => (
             <span className="rbac-role-chip rbac-role-chip-sm" key={role}>
               {role}
             </span>
@@ -449,6 +449,7 @@ export default function Users() {
                   </div>
                 )}
               </div>
+              
             </div>
 
             {canAssign && (
@@ -560,3 +561,4 @@ export default function Users() {
     </>
   );
 }
+

@@ -15,3 +15,4 @@ export function Can({ permission, permissions, children, fallback = null }) {
     if (!permission && !permissions) return children;
     return (permission ? can(permission) : canAny(permissions || [])) ? children : fallback;
 }
+

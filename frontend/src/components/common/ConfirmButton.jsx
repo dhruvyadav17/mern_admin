@@ -1,1 +1,0 @@
-export default function ConfirmButton({ children, message="Are you sure?", onConfirm, className="btn btn-outline-danger", disabled=false }) { return <button type="button" className={className} disabled={disabled} onClick={()=>{if(window.confirm(message)) onConfirm();}}>{children}</button>; }

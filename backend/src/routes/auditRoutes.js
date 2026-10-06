@@ -7,3 +7,4 @@ const router = express.Router();
 router.get("/export", protect, requirePermission("audit.export"), asyncHandler(controller.exportLogs));
 router.get("/", protect, requirePermission("audit.view"), asyncHandler(controller.list));
 module.exports = router;
+

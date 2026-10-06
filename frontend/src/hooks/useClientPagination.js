@@ -17,3 +17,4 @@ export default function useClientPagination(items, { limit = 10 } = {}) {
     totalPages,
   };
 }
+

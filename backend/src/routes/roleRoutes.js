@@ -4,3 +4,4 @@ router.post("/",protect,requirePermission("roles.manage"),createRoleValidation,v
 router.put("/:id",protect,requirePermission("roles.manage"),updateRoleValidation,validate,asyncHandler(controller.updateRole));
 router.delete("/:id",protect,requirePermission("roles.manage"),asyncHandler(controller.deleteRole));
 module.exports=router;
+

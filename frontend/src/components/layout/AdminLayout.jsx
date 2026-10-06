@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { Can } from "../../context/PermissionContext";
 import { globalSearch } from "../../services/searchService";
 import toast from "react-hot-toast";
+import NotificationBell from "../notifications/NotificationBell";
 
 const NavItem = ({ to, icon, children, permission }) => (
     <Can permission={permission}>
@@ -71,13 +72,6 @@ export default function AdminLayout() {
         localStorage.setItem("admin.sidebar.collapsed", sidebarOpen ? "false" : "true");
     }, [sidebarOpen]);
 
-    useEffect(() => {
-        const onResize = () => {
-            if (window.innerWidth >= 992 && sidebarOpen === false) return;
-        };
-        window.addEventListener("resize", onResize);
-        return () => window.removeEventListener("resize", onResize);
-    }, [sidebarOpen]);
 
     const toggleSidebar = () => setSidebarOpen(v => !v);
 
@@ -98,7 +92,11 @@ export default function AdminLayout() {
                         <input ref={searchRef} className="form-control ps-5" value={q} onChange={e => setQ(e.target.value)} placeholder="Search users, roles, permissions (Ctrl+K)" />
                         <SearchResults results={results} go={go} />
                     </div>
-                    <ul className="navbar-nav ms-auto">
+                    
+                    <ul className="navbar-nav ms-auto align-items-center">
+                        <li className="nav-item">
+                            <NotificationBell />
+                        </li>
                         <li className="nav-item dropdown">
                             <button className="btn nav-link dropdown-toggle" data-bs-toggle="dropdown" type="button"><i className="bi bi-person-circle me-1" />{user?.name}</button>
                             <ul className="dropdown-menu dropdown-menu-end">
@@ -111,6 +109,7 @@ export default function AdminLayout() {
                             </ul>
                         </li>
                     </ul>
+                    
                 </div>
             </nav>
 

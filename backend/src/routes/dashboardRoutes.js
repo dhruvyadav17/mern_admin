@@ -1,1 +1,2 @@
 const express=require("express"); const {getDashboardStats}=require("../controllers/dashboardController"); const {protect}=require("../middleware/authMiddleware"); const {requirePermission}=require("../middleware/permissionMiddleware"); const asyncHandler=require("../utils/asyncHandler"); const router=express.Router(); router.get("/stats",protect,requirePermission("dashboard.view"),asyncHandler(getDashboardStats)); module.exports=router;
+

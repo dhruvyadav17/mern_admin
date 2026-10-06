@@ -81,7 +81,7 @@ export default function UserPermissions() {
             <div>
               <div className="fw-bold">{user.name}</div>
               <div className="small text-secondary">{user.email}</div>
-              <div className="d-flex flex-wrap gap-2 mt-2">{(user.roles || [user.role]).map((role) => <span className="rbac-role-chip" key={role}><i className="bi bi-shield-check me-1" />{role}</span>)}</div>
+              <div className="d-flex flex-wrap gap-2 mt-2">{(user.roles || []).map((role) => <span className="rbac-role-chip" key={role}><i className="bi bi-shield-check me-1" />{role}</span>)}</div>
             </div>
           </div>
           <div className="user-permission-rule"><i className="bi bi-lightning-charge-fill text-primary" /><span><strong>One checkbox = user access.</strong><br /><small>Changes save instantly.</small></span></div>

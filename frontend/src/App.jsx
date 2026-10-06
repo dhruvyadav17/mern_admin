@@ -15,7 +15,7 @@ function App() {
             .catch(() => setSettings({}));
     }, []);
 
-    const roles = user?.roles?.length ? user.roles : [user?.role];
+    const roles = user?.roles || [];
     const isAdmin = roles.includes("admin");
     const maintenanceEnabled = settings?.["maintenance.enabled"] === true;
     const loginPath = location.pathname === "/login";
@@ -46,3 +46,4 @@ function MaintenancePage() {
 }
 
 export default App;
+

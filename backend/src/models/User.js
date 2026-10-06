@@ -30,13 +30,6 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
-    role: {
-      type: String,
-      trim: true,
-      lowercase: true,
-      default: USER_ROLES.USER,
-    },
-
     roles: {
       type: [String],
       default: undefined,
@@ -75,11 +68,9 @@ const userSchema = new mongoose.Schema(
   },
 );
 
-// IMPORTANT:
-// Current Mongoose hook does not use callback `next`.
 userSchema.pre("save", function () {
   if (!this.roles || !this.roles.length) {
-    this.roles = [this.role || USER_ROLES.USER];
+    this.roles = [USER_ROLES.USER];
   }
 
   this.roles = [
@@ -90,7 +81,7 @@ userSchema.pre("save", function () {
     ),
   ];
 
-  this.role = this.roles[0] || USER_ROLES.USER;
 });
 
 module.exports = mongoose.model("User", userSchema);
+

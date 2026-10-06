@@ -7,3 +7,4 @@ export default function useToastError() {
     toast.error(getApiErrorMessage(error, fallback));
   }, []);
 }
+

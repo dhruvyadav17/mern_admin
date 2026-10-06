@@ -36,3 +36,4 @@ const maintenanceMiddleware = async (req, res, next) => {
 };
 
 module.exports = maintenanceMiddleware;
+

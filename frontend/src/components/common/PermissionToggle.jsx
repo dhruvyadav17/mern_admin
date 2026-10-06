@@ -7,3 +7,4 @@ export default function PermissionToggle({ checked, disabled = false, saving = f
     </label>
   );
 }
+

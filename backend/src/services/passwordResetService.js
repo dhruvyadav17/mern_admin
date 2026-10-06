@@ -43,3 +43,4 @@ const resetPassword = async (rawToken, password) => {
 };
 
 module.exports = { requestReset, resetPassword };
+

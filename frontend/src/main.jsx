@@ -9,3 +9,4 @@ import { PermissionProvider } from "./context/PermissionContext";
 import { BrowserRouter } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 ReactDOM.createRoot(document.getElementById("root")).render(<React.StrictMode><BrowserRouter><AuthProvider><PermissionProvider><App /></PermissionProvider><Toaster position="top-right" /></AuthProvider></BrowserRouter></React.StrictMode>);
+

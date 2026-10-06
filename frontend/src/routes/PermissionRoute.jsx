@@ -10,3 +10,4 @@ export default function PermissionRoute({ permission, children }) {
     if (!can(permission)) return <Navigate to="/403" replace />;
     return children;
 }
+

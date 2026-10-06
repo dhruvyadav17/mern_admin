@@ -9,3 +9,4 @@ module.exports = {
     AUTH_COOKIE_NAME,
     JWT_OPTIONS
 };
+

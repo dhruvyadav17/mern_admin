@@ -40,3 +40,4 @@ test("session timeout unit helpers are consistent", () => {
     assert.equal(minutesToSeconds(15), 900);
     assert.equal(minutesToMilliseconds(15), 900000);
 });
+

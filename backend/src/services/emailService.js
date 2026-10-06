@@ -49,3 +49,4 @@ const sendEmailVerificationEmail = async ({ to, name, token }) => {
 };
 
 module.exports = { sendPasswordResetEmail, sendEmailVerificationEmail };
+

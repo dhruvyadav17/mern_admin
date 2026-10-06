@@ -5,7 +5,7 @@ const { JWT_OPTIONS } = require("../config/security");
 
 const verifyAuthToken = (token) => jwt.verify(token, process.env.JWT_SECRET, JWT_OPTIONS);
 
-const getUserRoles = (user) => user?.roles?.length ? user.roles : [user?.role].filter(Boolean);
+const getUserRoles = (user) => Array.isArray(user?.roles) ? user.roles : [];
 
 const userHasRole = (user, role) => getUserRoles(user).includes(role);
 
@@ -36,3 +36,4 @@ module.exports = {
     userHasRole,
     verifyAuthToken
 };
+

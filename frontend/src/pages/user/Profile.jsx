@@ -48,12 +48,13 @@ export default function Profile() {
                 <label className="form-label">Email</label>
                 <input
                   className="form-control"
-                  type="email"
+                  type="email" disabled
                   required
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
               </div>
+              
               <div className="col-12">
                 <div className="alert alert-light border mb-0">
                   Roles:{" "}

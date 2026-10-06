@@ -10,3 +10,4 @@ const settingSchema = new mongoose.Schema({
     isPublic: { type: Boolean, default: false }
 }, { timestamps: true });
 module.exports = mongoose.model("Setting", settingSchema);
+

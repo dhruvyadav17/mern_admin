@@ -85,6 +85,7 @@ const updateProfile = async (req, res) => {
             false
         );
         user.emailVerifiedAt = verificationRequired ? null : new Date();
+        user.authVersion = (user.authVersion || 0) + 1;
     }
     try { await user.save(); } catch (error) { if (error?.code === 11000) throw new AppError("Email already registered", 409); throw error; }
     const verification = emailChanged
@@ -123,3 +124,4 @@ module.exports = {
     verifyEmail,
     resendVerification
 };
+

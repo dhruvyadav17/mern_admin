@@ -18,3 +18,4 @@ If you are developing a production application, we recommend using TypeScript wi
 ### RBAC UI
 
 The AdminLTE shell is permission-aware. Backend APIs remain the source of truth: hiding a menu/button in React is not considered authorization. Roles, permissions, role-permission assignments and per-user Allow/Deny overrides are managed independently.
+

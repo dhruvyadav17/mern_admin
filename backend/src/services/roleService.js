@@ -49,16 +49,24 @@ const updateRole = async (id, payload) => {
     if (payload.permissions !== undefined) role.permissions = await sanitizePermissions(payload.permissions);
     if (payload.parentRole !== undefined) role.parentRole = await validateParent(role.name, payload.parentRole);
     await role.save();
-    if (previousName !== role.name) { await User.updateMany({ role: previousName }, { $set: { role: role.name }, $inc: { authVersion: 1 } }); await User.updateMany({ roles: previousName }, { $set: { "roles.$": role.name }, $inc: { authVersion: 1 } }); }
+    if (previousName !== role.name) {
+        await User.updateMany(
+            { roles: previousName },
+            { $set: { "roles.$": role.name }, $inc: { authVersion: 1 } },
+        );
+        await Role.updateMany(
+            { parentRole: previousName },
+            { $set: { parentRole: role.name } },
+        );
+    }
     return role;
 };
 const deleteRole = async (id) => {
     const role = await Role.findById(id);
     if (!role) throw new AppError("Role not found", 404);
     if (role.isSystem) throw new AppError("System role cannot be deleted", 400);
-    if (await User.exists({ $or: [{ role: role.name }, { roles: role.name }] })) throw new AppError("Role is assigned to users", 409);
+    if (await User.exists({ roles: role.name })) throw new AppError("Role is assigned to users", 409);
     if (await Role.exists({ parentRole: role.name })) throw new AppError("Role is a parent of another role", 409);
     await role.deleteOne();
 };
-const getRolePermissions = async (roleName) => { const role = await Role.findOne({ name: roleName }).lean(); return role?.permissions || []; };
-module.exports = { listRoles, createRole, updateRole, deleteRole, getRolePermissions, sanitizePermissions };
+module.exports = { listRoles, createRole, updateRole, deleteRole, sanitizePermissions };

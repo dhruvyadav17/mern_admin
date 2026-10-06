@@ -15,13 +15,13 @@ const emailVerificationTokenSchema = new mongoose.Schema({
     expiresAt: {
         type: Date,
         required: true,
-        index: true
+        index: { expires: 0 }
     }
 }, { timestamps: true });
 
-emailVerificationTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model(
     "EmailVerificationToken",
     emailVerificationTokenSchema
 );
+
