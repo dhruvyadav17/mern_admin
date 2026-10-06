@@ -77,7 +77,7 @@ async function seedDatabase() {
   }
 
   await mongoose.connect(mongoUri, {
-    dbName: process.env.MONGO_DB_NAME || "mern_admin",
+    dbName: process.env.MONGO_DB_NAME || "mern_admin1",
   });
 
   try {
