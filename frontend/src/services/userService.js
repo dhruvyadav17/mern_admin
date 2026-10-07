@@ -13,6 +13,9 @@ const deleteUser = (id) => api.delete(`/users/${id}`);
 const getActivity = (id, params) => api.get(`/users/${id}/activity`, { params });
 
 const exportUsers = () => api.get("/users/export", { responseType: "blob" });
+const bulkAction = (payload) => {
+  return api.patch("/users/bulk", payload);
+};
 
 const updateStatus = (id, status) =>
     api.patch(`/users/${id}/status`, { status });
@@ -25,5 +28,6 @@ export default {
     deleteUser,
     updateStatus,
     getActivity,
-    exportUsers
+    exportUsers,
+    bulkAction
 };

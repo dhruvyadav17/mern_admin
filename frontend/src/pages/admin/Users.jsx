@@ -21,6 +21,9 @@ const createBlank = (defaultRole = "user") => ({
 
 export default function Users() {
   const [users, setUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [bulkAction, setBulkAction] = useState("");
+  const [bulkLoading, setBulkLoading] = useState(false);
   const [roles, setRoles] = useState([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -70,10 +73,13 @@ export default function Users() {
         if (cancelled) return;
         const user = response.data.data;
         openEdit(user);
-        setSearchParams((current) => {
-          current.delete("edit");
-          return current;
-        }, { replace: true });
+        setSearchParams(
+          (current) => {
+            current.delete("edit");
+            return current;
+          },
+          { replace: true },
+        );
       })
       .catch((error) => {
         if (!cancelled) {
@@ -190,6 +196,39 @@ export default function Users() {
     }
   };
 
+  const handleBulkAction = async () => {
+    if (!selectedUsers.length || !bulkAction) return;
+
+    if (
+      bulkAction === "delete" &&
+      !window.confirm(
+        `Are you sure you want to delete ${selectedUsers.length} selected user(s)?`,
+      )
+    ) {
+      return;
+    }
+
+    setBulkLoading(true);
+
+    try {
+      await userService.bulkAction({
+        userIds: selectedUsers,
+        action: bulkAction,
+      });
+
+      toast.success("Bulk action completed successfully");
+
+      setSelectedUsers([]);
+      setBulkAction("");
+
+      await load();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Bulk action failed");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   const toggleRole = (name) => {
     if (isSelf) return;
     setForm((current) => {
@@ -217,6 +256,35 @@ export default function Users() {
   }, [roles, roleFilter]);
 
   const columns = [
+    {
+      key: "select",
+      label: (
+        <input
+          type="checkbox"
+          className="form-check-input"
+          checked={users.length > 0 && selectedUsers.length === users.length}
+          onChange={(e) => {
+            setSelectedUsers(
+              e.target.checked ? users.map((user) => user.id) : [],
+            );
+          }}
+        />
+      ),
+      render: (user) => (
+        <input
+          type="checkbox"
+          className="form-check-input"
+          checked={selectedUsers.includes(user.id)}
+          onChange={(e) => {
+            setSelectedUsers((current) =>
+              e.target.checked
+                ? [...new Set([...current, user.id])]
+                : current.filter((id) => id !== user.id),
+            );
+          }}
+        />
+      ),
+    },
     {
       key: "name",
       label: "User",
@@ -301,12 +369,12 @@ export default function Users() {
       />
       <div className="card shadow-sm user-list-card">
         <div className="card-header d-flex flex-wrap gap-2 align-items-center">
-          <div className="me-auto">
-            <h3 className="card-title mb-0">Users</h3>
-            <div className="small text-secondary">
-              {meta.total || 0} total users
-            </div>
-          </div>
+<div className="me-auto">
+  <h3 className="mb-0">Users</h3>
+  <div className="small text-secondary">
+    {meta.total || 0} total users
+  </div>
+</div>
           <div className="input-group user-list-search">
             <span className="input-group-text">
               <i className="bi bi-search" />
@@ -321,6 +389,43 @@ export default function Users() {
               }}
             />
           </div>
+          {selectedUsers.length > 0 && (
+            <>
+              <select
+                className="form-select form-select-sm"
+                value={bulkAction}
+                onChange={(e) => setBulkAction(e.target.value)}
+                disabled={bulkLoading}
+                style={{ width: "170px" }}
+              >
+                <option value="">Bulk action</option>
+
+                {canStatus && (
+                  <>
+                    <option value="activate">Activate</option>
+                    <option value="deactivate">Deactivate</option>
+                    <option value="suspend">Suspend</option>
+                  </>
+                )}
+
+                <Can permission="users.delete">
+                  <option value="delete">Delete</option>
+                </Can>
+              </select>
+
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                disabled={!bulkAction || bulkLoading}
+                onClick={handleBulkAction}
+              >
+                {bulkLoading && (
+                  <span className="spinner-border spinner-border-sm me-1" />
+                )}
+                Apply ({selectedUsers.length})
+              </button>
+            </>
+          )}
           <Can permission="users.export">
             <button
               className="btn btn-sm btn-outline-secondary"
@@ -478,7 +583,6 @@ export default function Users() {
                   </div>
                 )}
               </div>
-              
             </div>
 
             {canAssign && (

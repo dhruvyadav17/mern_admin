@@ -10,9 +10,7 @@ const {
 } = require("../utils/accessPolicy");
 
 const notificationService = require("../services/notificationService");
-const {
-  NOTIFICATION_TYPES,
-} = require("../constants/notificationTypes");
+const { NOTIFICATION_TYPES } = require("../constants/notificationTypes");
 
 const getUsers = async (req, res) => {
   const result = await userService.getUsers(req.query);
@@ -36,13 +34,13 @@ const createUser = async (req, res) => {
   });
 
   try {
-      await notificationService.createNotification({
-        recipient: user.id,
-        type: NOTIFICATION_TYPES.USER_CREATED,
-        title: "Welcome",
-        message: "Your account has been created successfully.",
-        link: "/profile",
-      });
+    await notificationService.createNotification({
+      recipient: user.id,
+      type: NOTIFICATION_TYPES.USER_CREATED,
+      title: "Welcome",
+      message: "Your account has been created successfully.",
+      link: "/profile",
+    });
   } catch (notificationError) {
     console.error("Failed to create user notification:", notificationError);
   }
@@ -106,6 +104,20 @@ const updateUserStatus = async (req, res) => {
   await audit(req, "user.status", "User", user.id, { status: req.body.status });
   return successResponse(res, user, `User ${req.body.status} successfully`);
 };
+
+const bulkAction = async (req, res) => {
+  const { userIds, action } = req.body;
+
+  const result = await userService.bulkAction(userIds, action, req.user.id);
+
+  await safeAudit(req, "user.bulk_action", "User", null, {
+    action,
+    userIds,
+    affectedCount: result.affectedCount,
+  });
+
+  return successResponse(res, result, "Bulk action completed successfully");
+};
 const exportUsers = async (req, res) => {
   const users = await User.find({}).sort({ createdAt: -1 }).lean();
   const rows = [
@@ -123,6 +135,7 @@ const exportUsers = async (req, res) => {
   res.setHeader("Content-Disposition", "attachment; filename=users.csv");
   return res.send(rows.map((r) => r.map(esc).join(",")).join("\n"));
 };
+
 module.exports = {
   getUsers,
   createUser,
@@ -132,4 +145,5 @@ module.exports = {
   deleteUser,
   updateUserStatus,
   exportUsers,
+  bulkAction,
 };

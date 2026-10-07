@@ -30,6 +30,12 @@ router.post(
   validate,
   asyncHandler(controller.createUser),
 );
+router.patch(
+  "/bulk",
+  protect,
+  requirePermission("users.status"),
+  asyncHandler(controller.bulkAction),
+);
 router.get(
   "/:id",
   protect,
