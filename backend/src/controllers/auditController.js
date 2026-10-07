@@ -47,7 +47,8 @@ const exportLogs = async (req, res) => {
   const result = await auditService.list({
     ...req.query,
     page: 1,
-    limit: 100,
+    limit: 10000,
+    exportMode: true,
   });
 
   const format = String(req.query.format || "csv").toLowerCase();

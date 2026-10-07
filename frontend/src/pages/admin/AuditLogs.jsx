@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { useCallback, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 import PageHeader from "../../components/common/PageHeader";
-// import Can from "../../components/common/Can";
+import { Can } from "../../context/PermissionContext";
 import { getAuditLogs, exportAuditLogs } from "../../services/auditService";
 
 const initialFilters = {
@@ -15,51 +15,48 @@ const initialFilters = {
   to: "",
 };
 
+const emptyPagination = {
+  page: 1,
+  limit: 25,
+  total: 0,
+  totalPages: 1,
+};
+
 const AuditLogs = () => {
   const [filters, setFilters] = useState(initialFilters);
-
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
-
   const [logs, setLogs] = useState([]);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 25,
-    total: 0,
-    totalPages: 1,
-  });
-
+  const [pagination, setPagination] = useState(emptyPagination);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
-  const load = async (page = 1) => {
-    setLoading(true);
+  const load = useCallback(
+    async (page = 1) => {
+      setLoading(true);
 
-    try {
-      const response = await getAuditLogs({
-        ...appliedFilters,
-        page,
-        limit: 25,
-      });
-
-      setLogs(response.data.data || []);
-
-      setPagination(
-        response.data.pagination || {
+      try {
+        const response = await getAuditLogs({
+          ...appliedFilters,
           page,
           limit: 25,
-          total: 0,
-          totalPages: 1,
-        },
-      );
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load audit logs");
-    } finally {
-      setLoading(false);
-    }
-  };
+        });
+
+        setLogs(response.data.data || []);
+        setPagination(response.data.pagination || { ...emptyPagination, page });
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message || "Failed to load audit logs",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [appliedFilters],
+  );
 
   useEffect(() => {
     load(1);
-  }, [appliedFilters]);
+  }, [load]);
 
   const handleFilterChange = (event) => {
     const { name, value } = event.target;
@@ -71,17 +68,17 @@ const AuditLogs = () => {
   };
 
   const handleFilter = () => {
-    setAppliedFilters({
-      ...filters,
-    });
+    setAppliedFilters({ ...filters });
   };
 
   const handleClear = () => {
-    setFilters(initialFilters);
-    setAppliedFilters(initialFilters);
+    setFilters({ ...initialFilters });
+    setAppliedFilters({ ...initialFilters });
   };
 
   const handleExport = async () => {
+    setExporting(true);
+
     try {
       const response = await exportAuditLogs({
         ...appliedFilters,
@@ -91,40 +88,34 @@ const AuditLogs = () => {
       const blob = new Blob([response.data], {
         type: "text/csv;charset=utf-8;",
       });
-
       const url = window.URL.createObjectURL(blob);
-
       const link = document.createElement("a");
 
       link.href = url;
       link.download = "audit-logs.csv";
-
       document.body.appendChild(link);
       link.click();
       link.remove();
-
       window.URL.revokeObjectURL(url);
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Failed to export audit logs",
       );
+    } finally {
+      setExporting(false);
     }
   };
 
   const handlePrevious = () => {
-    if (pagination.page <= 1) {
-      return;
+    if (pagination.page > 1) {
+      load(pagination.page - 1);
     }
-
-    load(pagination.page - 1);
   };
 
   const handleNext = () => {
-    if (pagination.page >= pagination.totalPages) {
-      return;
+    if (pagination.page < pagination.totalPages) {
+      load(pagination.page + 1);
     }
-
-    load(pagination.page + 1);
   };
 
   return (
@@ -142,7 +133,6 @@ const AuditLogs = () => {
                 <label className="form-label" htmlFor="audit-search">
                   Search
                 </label>
-
                 <input
                   id="audit-search"
                   type="text"
@@ -150,7 +140,7 @@ const AuditLogs = () => {
                   name="search"
                   value={filters.search}
                   onChange={handleFilterChange}
-                  placeholder="Action / target ID"
+                  placeholder="Action / resource / target ID"
                 />
               </div>
 
@@ -158,7 +148,6 @@ const AuditLogs = () => {
                 <label className="form-label" htmlFor="audit-actor">
                   User ID
                 </label>
-
                 <input
                   id="audit-actor"
                   type="text"
@@ -174,7 +163,6 @@ const AuditLogs = () => {
                 <label className="form-label" htmlFor="audit-action">
                   Action
                 </label>
-
                 <input
                   id="audit-action"
                   type="text"
@@ -190,7 +178,6 @@ const AuditLogs = () => {
                 <label className="form-label" htmlFor="audit-target-type">
                   Resource
                 </label>
-
                 <input
                   id="audit-target-type"
                   type="text"
@@ -206,7 +193,6 @@ const AuditLogs = () => {
                 <label className="form-label" htmlFor="audit-target-id">
                   Target ID
                 </label>
-
                 <input
                   id="audit-target-id"
                   type="text"
@@ -222,7 +208,6 @@ const AuditLogs = () => {
                 <label className="form-label" htmlFor="audit-from">
                   From
                 </label>
-
                 <input
                   id="audit-from"
                   type="date"
@@ -237,7 +222,6 @@ const AuditLogs = () => {
                 <label className="form-label" htmlFor="audit-to">
                   To
                 </label>
-
                 <input
                   id="audit-to"
                   type="date"
@@ -267,14 +251,16 @@ const AuditLogs = () => {
                   Clear
                 </button>
 
-                <button
-                  type="button"
-                  className="btn btn-outline-success"
-                  onClick={handleExport}
-                  disabled={loading}
-                >
-                  Export CSV
-                </button>
+                <Can permission="audit.export">
+                  <button
+                    type="button"
+                    className="btn btn-outline-success"
+                    onClick={handleExport}
+                    disabled={loading || exporting}
+                  >
+                    {exporting ? "Exporting..." : "Export CSV"}
+                  </button>
+                </Can>
               </div>
             </div>
           </div>
@@ -322,7 +308,6 @@ const AuditLogs = () => {
                           <div className="fw-semibold">
                             {log.actorId?.name || "-"}
                           </div>
-
                           <small className="text-muted">
                             {log.actorId?.email || ""}
                           </small>
@@ -335,11 +320,8 @@ const AuditLogs = () => {
                         </td>
 
                         <td>{log.targetType || "-"}</td>
-
                         <td>{log.targetId || "-"}</td>
-
                         <td>{log.ip || "-"}</td>
-
                         <td>
                           <code>{JSON.stringify(log.details || {})}</code>
                         </td>
@@ -371,7 +353,9 @@ const AuditLogs = () => {
                 type="button"
                 className="btn btn-sm btn-outline-secondary"
                 onClick={handleNext}
-                disabled={loading || pagination.page >= pagination.totalPages}
+                disabled={
+                  loading || pagination.page >= pagination.totalPages
+                }
               >
                 Next
               </button>

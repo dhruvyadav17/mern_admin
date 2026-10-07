@@ -31,9 +31,11 @@ const list = async ({
   targetId = "",
   from = "",
   to = "",
+  exportMode = false,
 }) => {
   page = Math.max(1, Number(page) || 1);
-  limit = Math.min(100, Math.max(1, Number(limit) || 25));
+  const maxLimit = exportMode ? 10000 : 100;
+  limit = Math.min(maxLimit, Math.max(1, Number(limit) || 25));
 
   search = String(search || "").trim();
   action = String(action || "").trim();

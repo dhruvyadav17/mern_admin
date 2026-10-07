@@ -7,11 +7,12 @@ const { USER_ROLES, USER_STATUS } = require("../constants/userConstants");
 const { hashPassword } = require("../utils/password");
 const { toUserResponse, toUserListResponse } = require("../utils/userMapper");
 const { getPagination, getPaginationMeta } = require("../utils/pagination");
-const { log: audit } = require("./auditService");
 const settingsService = require("./settingsService");
 
 const ADMIN_LOCK_ID = "active-admin-mutation";
 const ADMIN_LOCK_TTL_MS = 30_000;
+const BULK_STATUS_ACTIONS = ["activate", "deactivate", "suspend"];
+const MAX_BULK_USERS = 100;
 
 const validateUserId = (id) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -75,14 +76,19 @@ const withActiveAdminLock = async (operation) => {
   }
 };
 
-const ensureActiveAdminWillRemain = async (excludeUserId) => {
+const ensureActiveAdminWillRemain = async (excludedUserIds = []) => {
+  const excludedIds = (Array.isArray(excludedUserIds)
+    ? excludedUserIds
+    : [excludedUserIds]
+  ).filter(Boolean);
+
   const activeAdminCount = await User.countDocuments({
     roles: USER_ROLES.ADMIN,
     status: USER_STATUS.ACTIVE,
-    ...(excludeUserId ? { _id: { $ne: excludeUserId } } : {}),
+    ...(excludedIds.length ? { _id: { $nin: excludedIds } } : {}),
   });
 
-  if (activeAdminCount === 0) {
+  if (activeAdminCount < 1) {
     throw new AppError("At least one active admin is required", 400);
   }
 };
@@ -293,15 +299,18 @@ const updateUser = async (id, data, currentUserId) => {
 
     if (normalizedData.name !== undefined) user.name = normalizedData.name;
 
-    if (
+    const removesAdminRole =
       isActiveAdmin &&
       normalizedData.roles !== undefined &&
-      !normalizedData.roles.includes(USER_ROLES.ADMIN)
-    ) {
-      await ensureActiveAdminWillRemain(user._id);
-    }
+      !normalizedData.roles.includes(USER_ROLES.ADMIN);
 
-    if (isActiveAdmin && normalizedData.status === USER_STATUS.INACTIVE) {
+    const deactivatesActiveAdmin =
+      isActiveAdmin &&
+      normalizedData.status !== undefined &&
+      normalizedData.status !== USER_STATUS.ACTIVE &&
+      normalizedData.status !== user.status;
+
+    if (removesAdminRole || deactivatesActiveAdmin) {
       await ensureActiveAdminWillRemain(user._id);
     }
 
@@ -418,14 +427,20 @@ const bulkAction = async (userIds, action, currentUserId) => {
     throw new AppError("At least one user must be selected", 400);
   }
 
-  const allowedActions = ["activate", "deactivate", "suspend", "delete"];
+  if (userIds.length > MAX_BULK_USERS) {
+    throw new AppError(
+      `You can select up to ${MAX_BULK_USERS} users at a time`,
+      400,
+    );
+  }
+
+  const allowedActions = [...BULK_STATUS_ACTIONS, "delete"];
 
   if (!allowedActions.includes(action)) {
     throw new AppError("Invalid bulk action", 400);
   }
 
   const uniqueIds = [...new Set(userIds.map((id) => String(id)))];
-
   uniqueIds.forEach(validateUserId);
 
   const currentUserIdString = String(currentUserId);
@@ -438,42 +453,29 @@ const bulkAction = async (userIds, action, currentUserId) => {
   }
 
   const mutation = async () => {
-    const users = await User.find({
-      _id: { $in: uniqueIds },
-    });
+    const users = await User.find({ _id: { $in: uniqueIds } });
 
     if (users.length !== uniqueIds.length) {
       throw new AppError("One or more users were not found", 404);
     }
 
-    /*
-     * DELETE
-     * ------------------------------------------------------------
-     * If selected users contain an active admin, deleting them must
-     * still leave at least one active admin.
-     */
+    const selectedActiveAdmins = users.filter(
+      (user) =>
+        user.roles?.includes(USER_ROLES.ADMIN) &&
+        user.status === USER_STATUS.ACTIVE,
+    );
+
+    const makesAdminInactive =
+      action === "deactivate" || action === "suspend";
+
+    if (
+      selectedActiveAdmins.length > 0 &&
+      (action === "delete" || makesAdminInactive)
+    ) {
+      await ensureActiveAdminWillRemain(uniqueIds);
+    }
+
     if (action === "delete") {
-      const selectedActiveAdmins = users.filter(
-        (user) =>
-          user.roles?.includes(USER_ROLES.ADMIN) &&
-          user.status === USER_STATUS.ACTIVE,
-      );
-
-      if (selectedActiveAdmins.length > 0) {
-        await ensureActiveAdminWillRemain();
-        const activeAdminCount = await User.countDocuments({
-          status: USER_STATUS.ACTIVE,
-          roles: USER_ROLES.ADMIN,
-        });
-
-        if (activeAdminCount - selectedActiveAdmins.length < 1) {
-          throw new AppError(
-            "At least one active administrator must remain",
-            400,
-          );
-        }
-      }
-
       const result = await User.deleteMany({
         _id: { $in: uniqueIds },
       });
@@ -484,9 +486,6 @@ const bulkAction = async (userIds, action, currentUserId) => {
       };
     }
 
-    /*
-     * STATUS ACTIONS
-     */
     const targetStatusMap = {
       activate: USER_STATUS.ACTIVE,
       deactivate: USER_STATUS.INACTIVE,
@@ -499,43 +498,9 @@ const bulkAction = async (userIds, action, currentUserId) => {
       throw new AppError("Invalid status action", 400);
     }
 
-    const selectedActiveAdmins = users.filter(
-      (user) =>
-        user.roles?.includes(USER_ROLES.ADMIN) &&
-        user.status === USER_STATUS.ACTIVE,
-    );
-
-    if (
-      selectedActiveAdmins.length > 0 &&
-      (action === "deactivate" || action === "suspend" || action === "delete")
-    ) {
-      const remainingActiveAdmins = await User.countDocuments({
-        _id: { $nin: userIds },
-        roles: USER_ROLES.ADMIN,
-        status: USER_STATUS.ACTIVE,
-      });
-
-      if (remainingActiveAdmins < 1) {
-        throw new AppError("At least one active admin must remain", 400);
-      }
-    }
-
-    /*
-     * Only users whose status actually changes are updated.
-     * This prevents unnecessary authVersion increments.
-     */
-    const usersToUpdate = users.filter((user) => user.status !== targetStatus);
-
-    if (usersToUpdate.length === 0) {
-      return {
-        action,
-        affectedCount: 0,
-      };
-    }
-
     const result = await User.updateMany(
       {
-        _id: { $in: userIds },
+        _id: { $in: uniqueIds },
         status: { $ne: targetStatus },
       },
       {
@@ -552,6 +517,17 @@ const bulkAction = async (userIds, action, currentUserId) => {
 
   return withActiveAdminLock(mutation);
 };
+
+const bulkStatusAction = (userIds, action, currentUserId) => {
+  if (!BULK_STATUS_ACTIONS.includes(action)) {
+    throw new AppError("Invalid bulk status action", 400);
+  }
+
+  return bulkAction(userIds, action, currentUserId);
+};
+
+const bulkDelete = (userIds, currentUserId) =>
+  bulkAction(userIds, "delete", currentUserId);
 
 const getUserActivity = async (id, { page = 1, limit = 25 } = {}) => {
   validateUserId(id);
@@ -588,4 +564,6 @@ module.exports = {
   updateUserStatus,
   getUserActivity,
   bulkAction,
+  bulkStatusAction,
+  bulkDelete,
 };

@@ -264,6 +264,18 @@ export default function Users() {
     );
   }, [roles, roleFilter]);
 
+  const selectableUsers = useMemo(
+    () =>
+      users.filter(
+        (user) => String(user.id) !== String(currentUser?.id || ""),
+      ),
+    [users, currentUser?.id],
+  );
+
+  const allSelectableSelected =
+    selectableUsers.length > 0 &&
+    selectableUsers.every((user) => selectedUsers.includes(user.id));
+
   const columns = [
     {
       key: "select",
@@ -271,10 +283,13 @@ export default function Users() {
         <input
           type="checkbox"
           className="form-check-input"
-          checked={users.length > 0 && selectedUsers.length === users.length}
+          checked={allSelectableSelected}
+          disabled={!selectableUsers.length || bulkLoading}
           onChange={(e) => {
             setSelectedUsers(
-              e.target.checked ? users.map((user) => user.id) : [],
+              e.target.checked
+                ? selectableUsers.map((user) => user.id)
+                : [],
             );
           }}
         />
@@ -284,6 +299,10 @@ export default function Users() {
           type="checkbox"
           className="form-check-input"
           checked={selectedUsers.includes(user.id)}
+          disabled={
+            bulkLoading ||
+            String(user.id) === String(currentUser?.id || "")
+          }
           onChange={(e) => {
             setSelectedUsers((current) =>
               e.target.checked

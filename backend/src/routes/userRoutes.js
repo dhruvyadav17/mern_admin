@@ -8,6 +8,8 @@ const {
   createUserValidation,
   updateUserValidation,
   updateUserStatusValidation,
+  bulkStatusActionValidation,
+  bulkDeleteValidation,
 } = require("../validators/userValidator");
 const router = express.Router();
 router.get(
@@ -34,6 +36,8 @@ router.patch(
   "/bulk/status",
   protect,
   requirePermission("users.status"),
+  bulkStatusActionValidation,
+  validate,
   asyncHandler(controller.bulkStatusAction),
 );
 
@@ -41,6 +45,8 @@ router.delete(
   "/bulk",
   protect,
   requirePermission("users.delete"),
+  bulkDeleteValidation,
+  validate,
   asyncHandler(controller.bulkDelete),
 );
 router.get(

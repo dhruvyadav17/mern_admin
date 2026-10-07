@@ -2,8 +2,6 @@ const userService = require("../services/userService");
 const { successResponse } = require("../utils/response");
 const { log: audit, safeLog: safeAudit } = require("../services/auditService");
 const User = require("../models/User");
-const AppError = require("../utils/AppError");
-
 
 const {
   assertPermission,
@@ -110,19 +108,17 @@ const updateUserStatus = async (req, res) => {
 const bulkStatusAction = async (req, res) => {
   const { userIds, action } = req.body;
 
-  const allowedStatusActions = ["activate", "deactivate", "suspend"];
-
-  if (!allowedStatusActions.includes(action)) {
-    throw new AppError("Invalid bulk status action", 400);
-  }
-
   assertPermission(
     req,
     "users.status",
     "You do not have permission to change user status",
   );
 
-  const result = await userService.bulkAction(userIds, action, req.user.id);
+  const result = await userService.bulkStatusAction(
+    userIds,
+    action,
+    req.user.id,
+  );
 
   await safeAudit(req, "user.bulk_status_action", "User", null, {
     action,
@@ -146,7 +142,7 @@ const bulkDelete = async (req, res) => {
     "You do not have permission to delete users",
   );
 
-  const result = await userService.bulkAction(userIds, "delete", req.user.id);
+  const result = await userService.bulkDelete(userIds, req.user.id);
 
   await safeAudit(req, "user.bulk_delete", "User", null, {
     action: "delete",
