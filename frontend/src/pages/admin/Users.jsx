@@ -51,6 +51,9 @@ export default function Users() {
       setUsers(usersResponse.data.data || []);
       setMeta(usersResponse.data.pagination || {});
       setRoles(rolesResponse.data.data || []);
+
+      setSelectedUsers([]);
+      setBulkAction("");
     } catch (error) {
       toast.error(error.response?.data?.message || "Unable to load users");
     } finally {
@@ -197,7 +200,9 @@ export default function Users() {
   };
 
   const handleBulkAction = async () => {
-    if (!selectedUsers.length || !bulkAction) return;
+    if (!selectedUsers.length || !bulkAction) {
+      return;
+    }
 
     if (
       bulkAction === "delete" &&
@@ -211,10 +216,14 @@ export default function Users() {
     setBulkLoading(true);
 
     try {
-      await userService.bulkAction({
-        userIds: selectedUsers,
-        action: bulkAction,
-      });
+      if (bulkAction === "delete") {
+        await userService.bulkDelete(selectedUsers);
+      } else {
+        await userService.bulkStatusAction({
+          userIds: selectedUsers,
+          action: bulkAction,
+        });
+      }
 
       toast.success("Bulk action completed successfully");
 
@@ -369,12 +378,12 @@ export default function Users() {
       />
       <div className="card shadow-sm user-list-card">
         <div className="card-header d-flex flex-wrap gap-2 align-items-center">
-<div className="me-auto">
-  <h3 className="mb-0">Users</h3>
-  <div className="small text-secondary">
-    {meta.total || 0} total users
-  </div>
-</div>
+          <div className="me-auto">
+            <h3 className="mb-0">Users</h3>
+            <div className="small text-secondary">
+              {meta.total || 0} total users
+            </div>
+          </div>
           <div className="input-group user-list-search">
             <span className="input-group-text">
               <i className="bi bi-search" />

@@ -31,10 +31,17 @@ router.post(
   asyncHandler(controller.createUser),
 );
 router.patch(
-  "/bulk",
+  "/bulk/status",
   protect,
   requirePermission("users.status"),
-  asyncHandler(controller.bulkAction),
+  asyncHandler(controller.bulkStatusAction),
+);
+
+router.delete(
+  "/bulk",
+  protect,
+  requirePermission("users.delete"),
+  asyncHandler(controller.bulkDelete),
 );
 router.get(
   "/:id",

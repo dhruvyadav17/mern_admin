@@ -10,24 +10,34 @@ const updateUser = (id, data) => api.patch(`/users/${id}`, data);
 
 const deleteUser = (id) => api.delete(`/users/${id}`);
 
-const getActivity = (id, params) => api.get(`/users/${id}/activity`, { params });
+const getActivity = (id, params) =>
+  api.get(`/users/${id}/activity`, { params });
 
 const exportUsers = () => api.get("/users/export", { responseType: "blob" });
-const bulkAction = (payload) => {
-  return api.patch("/users/bulk", payload);
+const bulkStatusAction = (payload) => {
+  return api.patch("/users/bulk/status", payload);
+};
+
+const bulkDelete = (userIds) => {
+  return api.delete("/users/bulk", {
+    data: {
+      userIds,
+    },
+  });
 };
 
 const updateStatus = (id, status) =>
-    api.patch(`/users/${id}/status`, { status });
+  api.patch(`/users/${id}/status`, { status });
 
 export default {
-    getUsers,
-    getUser,
-    createUser,
-    updateUser,
-    deleteUser,
-    updateStatus,
-    getActivity,
-    exportUsers,
-    bulkAction
+  getUsers,
+  getUser,
+  createUser,
+  updateUser,
+  deleteUser,
+  updateStatus,
+  getActivity,
+  exportUsers,
+  bulkStatusAction,
+  bulkDelete,
 };
