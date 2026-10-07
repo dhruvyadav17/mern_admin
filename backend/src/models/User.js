@@ -1,9 +1,6 @@
 const mongoose = require("mongoose");
 
-const {
-  USER_ROLES,
-  USER_STATUS,
-} = require("../constants/userConstants");
+const { USER_ROLES, USER_STATUS } = require("../constants/userConstants");
 
 const userSchema = new mongoose.Schema(
   {
@@ -13,7 +10,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
       maxlength: 100,
     },
-
+    avatar: {
+      type: String,
+      default: null,
+      maxlength: 700000,
+    },
     email: {
       type: String,
       required: true,
@@ -75,12 +76,9 @@ userSchema.pre("save", function () {
 
   this.roles = [
     ...new Set(
-      this.roles
-        .map((r) => String(r).trim().toLowerCase())
-        .filter(Boolean),
+      this.roles.map((r) => String(r).trim().toLowerCase()).filter(Boolean),
     ),
   ];
-
 });
 
 module.exports = mongoose.model("User", userSchema);

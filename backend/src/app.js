@@ -26,25 +26,25 @@ app.disable("x-powered-by");
 app.use(helmet());
 
 app.use(
-    cors({
-        origin: process.env.CLIENT_URL,
-        credentials: true,
-        methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"]
-    })
+  cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
+  }),
 );
 
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(csrfProtection);
 app.use(maintenanceMiddleware);
 
 app.get("/api/health", (req, res) => {
-    res.json({
-        success: true,
-        message: "API is working"
-    });
+  res.json({
+    success: true,
+    message: "API is working",
+  });
 });
 
 app.use("/api/auth", authRoutes);
@@ -59,10 +59,10 @@ app.use("/api/search", searchRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 app.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        message: "Route not found"
-    });
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
 });
 
 app.use(errorMiddleware);
