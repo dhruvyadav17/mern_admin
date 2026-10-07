@@ -6,14 +6,109 @@ const Role = require("../src/models/Role");
 const { hashPassword } = require("../src/utils/password");
 
 const SAMPLE_ROLES = [
-  { name: "manager", label: "Manager", description: "Team and operational management", permissions: ["dashboard.view", "users.view", "users.edit", "users.status", "audit.view"], parentRole: "user" },
-  { name: "support", label: "Support", description: "Customer and user support access", permissions: ["dashboard.view", "users.view", "users.edit", "profile.view", "profile.update"], parentRole: "user" },
-  { name: "editor", label: "Editor", description: "Content and application administration", permissions: ["dashboard.view", "settings.view", "settings.manage", "profile.view", "profile.update"], parentRole: "user" },
-  { name: "auditor", label: "Auditor", description: "Read-only audit access", permissions: ["dashboard.view", "users.view", "audit.view", "audit.export", "profile.view"], parentRole: "user" },
-  { name: "hr", label: "HR", description: "User and account administration", permissions: ["dashboard.view", "users.view", "users.create", "users.edit", "users.status", "profile.view"], parentRole: "user" },
-  { name: "sales", label: "Sales", description: "Sales team access", permissions: ["dashboard.view", "users.view", "profile.view", "profile.update"], parentRole: "user" },
-  { name: "finance", label: "Finance", description: "Finance operations access", permissions: ["dashboard.view", "audit.view", "profile.view", "profile.update"], parentRole: "user" },
-  { name: "moderator", label: "Moderator", description: "Moderation and account status access", permissions: ["dashboard.view", "users.view", "users.status", "profile.view", "profile.update"], parentRole: "user" },
+  {
+    name: "manager",
+    label: "Manager",
+    description: "Team and operational management",
+    permissions: [
+      "dashboard.view",
+      "users.view",
+      "users.edit",
+      "users.status",
+      "audit.view",
+    ],
+    parentRole: "user",
+  },
+  {
+    name: "support",
+    label: "Support",
+    description: "Customer and user support access",
+    permissions: [
+      "dashboard.view",
+      "users.view",
+      "users.edit",
+      "profile.view",
+      "profile.update",
+    ],
+    parentRole: "user",
+  },
+  {
+    name: "editor",
+    label: "Editor",
+    description: "Content and application administration",
+    permissions: [
+      "dashboard.view",
+      "settings.view",
+      "settings.manage",
+      "profile.view",
+      "profile.update",
+    ],
+    parentRole: "user",
+  },
+  {
+    name: "auditor",
+    label: "Auditor",
+    description: "Read-only audit access",
+    permissions: [
+      "dashboard.view",
+      "users.view",
+      "audit.view",
+      "audit.export",
+      "profile.view",
+    ],
+    parentRole: "user",
+  },
+  {
+    name: "hr",
+    label: "HR",
+    description: "User and account administration",
+    permissions: [
+      "dashboard.view",
+      "users.view",
+      "users.create",
+      "users.edit",
+      "users.status",
+      "profile.view",
+    ],
+    parentRole: "user",
+  },
+  {
+    name: "sales",
+    label: "Sales",
+    description: "Sales team access",
+    permissions: [
+      "dashboard.view",
+      "users.view",
+      "profile.view",
+      "profile.update",
+    ],
+    parentRole: "user",
+  },
+  {
+    name: "finance",
+    label: "Finance",
+    description: "Finance operations access",
+    permissions: [
+      "dashboard.view",
+      "audit.view",
+      "profile.view",
+      "profile.update",
+    ],
+    parentRole: "user",
+  },
+  {
+    name: "moderator",
+    label: "Moderator",
+    description: "Moderation and account status access",
+    permissions: [
+      "dashboard.view",
+      "users.view",
+      "users.status",
+      "profile.view",
+      "profile.update",
+    ],
+    parentRole: "user",
+  },
 ];
 
 const ROLE_SETS = [
@@ -33,12 +128,25 @@ const ROLE_SETS = [
   ["manager", "finance"],
 ];
 
-const STATUS_SEQUENCE = ["active", "active", "active", "active", "active", "inactive", "suspended"];
+const STATUS_SEQUENCE = [
+  "active",
+  "active",
+  "active",
+  "active",
+  "active",
+  "inactive",
+  "suspended",
+];
 
 function getUserCount() {
-  const value = Number.parseInt(process.env.SEED_SAMPLE_USER_COUNT || "1000", 10);
+  const value = Number.parseInt(
+    process.env.SEED_SAMPLE_USER_COUNT || "1000",
+    10,
+  );
   if (!Number.isInteger(value) || value < 1 || value > 10000) {
-    throw new Error("SEED_SAMPLE_USER_COUNT must be an integer between 1 and 10000");
+    throw new Error(
+      "SEED_SAMPLE_USER_COUNT must be an integer between 1 and 10000",
+    );
   }
   return value;
 }
@@ -46,7 +154,9 @@ function getUserCount() {
 function getSampleUserPassword() {
   const password = process.env.SEED_SAMPLE_USER_PASSWORD;
   if (!password || password.length < 8) {
-    throw new Error("SEED_SAMPLE_USER_PASSWORD is required and must be at least 8 characters");
+    throw new Error(
+      "SEED_SAMPLE_USER_PASSWORD is required and must be at least 8 characters",
+    );
   }
   return password;
 }
@@ -69,7 +179,9 @@ async function seedSampleRoles(now) {
 }
 
 function buildSampleUsers(count, passwordHash, now) {
-  const prefix = (process.env.SEED_SAMPLE_USER_PREFIX || "seed.user").trim().toLowerCase();
+  const prefix = (process.env.SEED_SAMPLE_USER_PREFIX || "seed.user")
+    .trim()
+    .toLowerCase();
   const users = new Array(count);
 
   for (let index = 1; index <= count; index += 1) {
@@ -91,31 +203,42 @@ function buildSampleUsers(count, passwordHash, now) {
 
 async function seedSampleUsers(users, now) {
   const resetPasswords = process.env.SEED_SAMPLE_RESET_PASSWORDS === "true";
-  const operations = users.map((user) => ({
-    updateOne: {
-      filter: { email: user.email },
-      update: {
-        $set: {
-          name: user.name,
-          roles: user.roles,
-          status: user.status,
-          emailVerifiedAt: user.emailVerifiedAt,
-          updatedAt: now,
-          ...(resetPasswords ? { password: user.password } : {}),
-        },
-        $setOnInsert: {
-          password: user.password,
-          authVersion: user.authVersion,
-          permissionOverrides: user.permissionOverrides,
-          createdAt: now,
-        },
+
+  const operations = users.map((user) => {
+    const update = {
+      $set: {
+        name: user.name,
+        roles: user.roles,
+        status: user.status,
+        emailVerifiedAt: user.emailVerifiedAt,
+        updatedAt: now,
       },
-      upsert: true,
-    },
-  }));
+      $setOnInsert: {
+        password: user.password,
+        authVersion: user.authVersion,
+        permissionOverrides: user.permissionOverrides,
+        createdAt: now,
+      },
+    };
+
+    if (resetPasswords) {
+      update.$set.password = user.password;
+      delete update.$setOnInsert.password;
+    }
+
+    return {
+      updateOne: {
+        filter: { email: user.email },
+        update,
+        upsert: true,
+      },
+    };
+  });
 
   for (let start = 0; start < operations.length; start += 500) {
-    await User.bulkWrite(operations.slice(start, start + 500), { ordered: false });
+    await User.bulkWrite(operations.slice(start, start + 500), {
+      ordered: false,
+    });
   }
 }
 
@@ -137,9 +260,13 @@ async function seedSampleData() {
     const users = buildSampleUsers(count, passwordHash, now);
     await seedSampleUsers(users, now);
 
-    console.log(`Sample seed complete: ${SAMPLE_ROLES.length} roles, ${count} users.`);
+    console.log(
+      `Sample seed complete: ${SAMPLE_ROLES.length} roles, ${count} users.`,
+    );
     console.log(`Sample users use the configured SEED_SAMPLE_USER_PASSWORD.`);
-    console.log(`Password reset mode: ${process.env.SEED_SAMPLE_RESET_PASSWORDS === "true" ? "enabled" : "disabled"}.`);
+    console.log(
+      `Password reset mode: ${process.env.SEED_SAMPLE_RESET_PASSWORDS === "true" ? "enabled" : "disabled"}.`,
+    );
   } finally {
     await mongoose.disconnect();
   }

@@ -21,6 +21,23 @@ const parseDate = (value, endOfDay = false) => {
   return date;
 };
 
+const log = async (
+  req,
+  action,
+  targetType,
+  targetId = null,
+  details = {},
+) => {
+  return AuditLog.create({
+    actorId: req?.user?._id || req?.user?.id || null,
+    action,
+    targetType,
+    targetId: targetId ? String(targetId) : undefined,
+    details,
+    ip: req?.ip,
+    userAgent: req?.get?.("user-agent"),
+  });
+};
 const list = async ({
   page = 1,
   limit = 25,
@@ -119,4 +136,5 @@ const list = async ({
 
 module.exports = {
   list,
+  log,
 };
