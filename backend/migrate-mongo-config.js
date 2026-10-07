@@ -7,7 +7,7 @@ if (!process.env.MONGO_URI) {
 module.exports = {
     mongodb: {
         url: process.env.MONGO_URI,
-        databaseName: process.env.MONGO_DB_NAME || "1",
+        databaseName: process.env.MONGO_DB_NAME || "mern_admin",
         options: {}
     },
     migrationsDir: "migrations",

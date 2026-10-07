@@ -16,4 +16,3 @@ const successResponse = (
 module.exports = {
     successResponse
 };
-

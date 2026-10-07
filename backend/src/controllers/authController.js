@@ -47,6 +47,7 @@ const changePassword = async (req, res) => {
     user.password = await hashPassword(req.body.password);
     user.authVersion = (user.authVersion || 0) + 1;
     await user.save();
+    await passwordResetService.invalidateForUser(user._id);
     await audit(req, "password.change", "User", req.user._id);
     res.clearCookie(AUTH_COOKIE_NAME, clearAuthCookieOptions);
     return successResponse(res, null, "Password changed successfully. Please login again.");
@@ -124,4 +125,3 @@ module.exports = {
     verifyEmail,
     resendVerification
 };
-

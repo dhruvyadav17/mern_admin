@@ -21,4 +21,3 @@ export default {
     changePassword,
     updateProfile
 };
-

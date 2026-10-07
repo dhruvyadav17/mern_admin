@@ -14,4 +14,3 @@ const search = async (q, permissions = []) => {
     return { users, roles, permissions: perms };
 };
 module.exports = { search };
-

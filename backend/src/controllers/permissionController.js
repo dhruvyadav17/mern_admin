@@ -45,4 +45,3 @@ const updateUserOverrides = async (req, res) => {
 
 const me = async (req, res) => successResponse(res, await getEffectivePermissions(req.user), "Effective permissions fetched successfully");
 module.exports = { list, create, update, remove, updateRolePermissions, getUserOverrides, updateUserPermission, updateUserOverrides, me };
-

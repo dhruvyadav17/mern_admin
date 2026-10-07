@@ -6,4 +6,3 @@ const applyOverrides = (basePermissions = [], allow = [], deny = []) => {
     return [...set];
 };
 module.exports = { hasPermission, applyOverrides };
-

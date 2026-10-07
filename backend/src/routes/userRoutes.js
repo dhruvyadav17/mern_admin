@@ -73,4 +73,3 @@ router.patch(
   asyncHandler(controller.updateUserStatus),
 );
 module.exports = router;
-

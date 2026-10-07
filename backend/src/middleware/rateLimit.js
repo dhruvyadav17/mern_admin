@@ -115,4 +115,3 @@ module.exports = {
     registerRateLimit,
     forgotPasswordRateLimit
 };
-

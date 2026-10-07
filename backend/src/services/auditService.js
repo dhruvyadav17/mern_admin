@@ -27,4 +27,3 @@ const list = async ({ page = 1, limit = 25, search = "", action = "", actorId = 
     return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 } };
 };
 module.exports = { log, safeLog, list };
-

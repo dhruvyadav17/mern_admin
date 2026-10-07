@@ -4,6 +4,24 @@ const Permission = require("../models/Permission");
 const AppError = require("../utils/AppError");
 
 const listRoles = () => Role.find().sort({ isSystem: -1, name: 1 }).lean();
+const getRole = (id) => Role.findById(id);
+const getEffectiveRolePermissions = async (roleName, visited = new Set()) => {
+    const normalized = String(roleName || "").trim().toLowerCase();
+    if (!normalized || visited.has(normalized)) return new Set();
+
+    visited.add(normalized);
+    const role = await Role.findOne({ name: normalized })
+        .select("name permissions parentRole")
+        .lean();
+    if (!role) throw new AppError("Parent role not found", 400);
+
+    const permissions = new Set(role.permissions || []);
+    if (role.parentRole) {
+        const inherited = await getEffectiveRolePermissions(role.parentRole, visited);
+        inherited.forEach((permission) => permissions.add(permission));
+    }
+    return permissions;
+};
 const sanitizePermissions = async (permissions = []) => {
     const keys = [...new Set(permissions.map((p) => String(p).trim().toLowerCase()).filter(Boolean))];
     if (!keys.length) return [];
@@ -69,4 +87,4 @@ const deleteRole = async (id) => {
     if (await Role.exists({ parentRole: role.name })) throw new AppError("Role is a parent of another role", 409);
     await role.deleteOne();
 };
-module.exports = { listRoles, createRole, updateRole, deleteRole, sanitizePermissions };
+module.exports = { listRoles, getRole, getEffectiveRolePermissions, createRole, updateRole, deleteRole, sanitizePermissions };

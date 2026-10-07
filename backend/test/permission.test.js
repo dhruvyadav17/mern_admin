@@ -8,4 +8,3 @@ test("wildcard grants permission", () => assert.equal(hasPermission(["*"], "anyt
 test("user deny semantics can remove role permission", () => {
   assert.deepEqual(applyOverrides(["users.view", "users.delete"], ["reports.view"], ["users.delete"]).sort(), ["reports.view", "users.view"]);
 });
-

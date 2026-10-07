@@ -18,4 +18,3 @@ module.exports = {
     USER_ROLE_VALUES,
     USER_STATUS_VALUES
 };
-

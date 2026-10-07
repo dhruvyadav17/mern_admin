@@ -19,4 +19,3 @@ const updateUserPermissionValidation = [
 ];
 
 module.exports = { createRoleValidation, updateRoleValidation, createPermissionValidation, updatePermissionValidation, updateUserPermissionValidation };
-

@@ -388,4 +388,3 @@ module.exports = {
     updateUserStatus,
     getUserActivity
 };
-

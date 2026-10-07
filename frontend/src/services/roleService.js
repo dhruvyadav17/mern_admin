@@ -12,4 +12,3 @@ export const getUserPermissions = (id) => api.get(`/permissions/users/${id}`);
 export const updateUserPermissions = (id, allow, deny) => api.put(`/permissions/users/${id}`, { allow, deny });
 export const updateUserPermission = (id, permission, enabled) => api.patch(`/permissions/users/${id}/permission`, { permission, enabled });
 export const getEffectivePermissions = () => api.get("/permissions/me");
-

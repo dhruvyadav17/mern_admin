@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
@@ -31,6 +32,7 @@ export default function Users() {
   const [saving, setSaving] = useState(false);
   const [permissionUser, setPermissionUser] = useState(null);
   const [roleFilter, setRoleFilter] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
   const { can } = usePermission();
   const { user: currentUser } = useAuth();
   const canAssign = can("users.role.assign");
@@ -56,6 +58,33 @@ export default function Users() {
   useEffect(() => {
     load();
   }, [page, search, canAssign]);
+
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId) return;
+
+    let cancelled = false;
+    userService
+      .getUser(editId)
+      .then((response) => {
+        if (cancelled) return;
+        const user = response.data.data;
+        openEdit(user);
+        setSearchParams((current) => {
+          current.delete("edit");
+          return current;
+        }, { replace: true });
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          toast.error(error.response?.data?.message || "Unable to load user");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, setSearchParams]);
 
   const openCreate = () => {
     const defaultRole =
@@ -561,4 +590,3 @@ export default function Users() {
     </>
   );
 }
-

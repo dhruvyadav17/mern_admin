@@ -39,9 +39,22 @@ export default function RolePermissions() {
   const role = roles.find((item) => item._id === selected);
 
   const inherited = useMemo(() => {
-    if (!role?.parentRole) return new Set();
-    const parent = roles.find((item) => item.name === role.parentRole);
-    return new Set(parent?.permissions || []);
+    const result = new Set();
+    const visited = new Set();
+
+    const collect = (roleName) => {
+      if (!roleName || visited.has(roleName)) return;
+      visited.add(roleName);
+
+      const parent = roles.find((item) => item.name === roleName);
+      if (!parent) return;
+
+      (parent.permissions || []).forEach((permission) => result.add(permission));
+      collect(parent.parentRole);
+    };
+
+    collect(role?.parentRole);
+    return result;
   }, [role, roles]);
 
   const grouped = useMemo(() => permissions
@@ -64,7 +77,7 @@ export default function RolePermissions() {
   };
 
   const persist = async (permissionKey, enabled) => {
-    if (!role || role.name === "admin" || saving.has(permissionKey)) return;
+    if (!role || role.isSystem || saving.size > 0) return;
 
     const previous = checked;
     const next = enabled ? unique([...checked, permissionKey]) : checked.filter((value) => value !== permissionKey);
@@ -89,7 +102,7 @@ export default function RolePermissions() {
   };
 
   const toggleGroup = async (items) => {
-    if (!role || role.name === "admin") return;
+    if (!role || role.isSystem || saving.size > 0) return;
     const keys = items.map((item) => item.key);
     const allSelected = keys.every((key) => checked.includes(key));
     const next = allSelected ? checked.filter((key) => !keys.includes(key)) : unique([...checked, ...keys]);
@@ -145,20 +158,20 @@ export default function RolePermissions() {
 
             <div className="card-body role-matrix-body">
               {role?.parentRole && <div className="alert alert-info d-flex align-items-start gap-2"><i className="bi bi-diagram-3 mt-1" /><span>Some access may be inherited from <strong>{role.parentRole}</strong>. Inherited permissions are shown checked and cannot be removed from the child role here.</span></div>}
-              {role?.name === "admin" && <div className="alert alert-warning d-flex align-items-center gap-2"><i className="bi bi-shield-lock-fill" /><span>This system role has full access through <code>*</code>. Its permissions cannot be changed.</span></div>}
+              {role?.isSystem && <div className="alert alert-warning d-flex align-items-center gap-2"><i className="bi bi-shield-lock-fill" /><span>This system role is protected. Its permissions cannot be changed from the role matrix.</span></div>}
 
               <div className="rbac-matrix-table role-matrix-clean">
                 <div className="rbac-matrix-head role-matrix-clean-head"><span>Permission</span><span className="text-center">Access</span><span className="text-end">Status</span></div>
                 {loading ? <div className="text-center py-5 text-secondary"><div className="spinner-border spinner-border-sm me-2" />Loading...</div> : Object.entries(grouped).map(([group, items]) => {
-                  const allSelected = items.every((item) => checked.includes(item.key) || inherited.has(item.key) || role?.name === "admin");
+                  const allSelected = items.every((item) => checked.includes(item.key) || inherited.has(item.key) || role?.isSystem || inherited.has("*"));
                   return (
                     <section className="rbac-matrix-group" key={group}>
-                      <div className="rbac-matrix-group-head"><div><span className="rbac-group-title">{group}</span><span className="small text-secondary ms-2">{items.length}</span></div>{role?.name !== "admin" && <button className="btn btn-sm btn-outline-secondary" onClick={() => toggleGroup(items)}><i className="bi bi-check2-square me-1" />{allSelected ? "Clear group" : "Allow all"}</button>}</div>
+                      <div className="rbac-matrix-group-head"><div><span className="rbac-group-title">{group}</span><span className="small text-secondary ms-2">{items.length}</span></div>{!role?.isSystem && <button className="btn btn-sm btn-outline-secondary" disabled={saving.size > 0} onClick={() => toggleGroup(items)}><i className="bi bi-check2-square me-1" />{allSelected ? "Clear group" : "Allow all"}</button>}</div>
                       {items.map((permission) => {
                         const inheritedAccess = inherited.has("*") || inherited.has(permission.key);
-                        const selectedAccess = role?.name === "admin" || checked.includes(permission.key) || inheritedAccess;
+                        const selectedAccess = role?.isSystem || checked.includes(permission.key) || inheritedAccess;
                         const isSaving = saving.has(permission.key);
-                        const disabled = role?.name === "admin" || inheritedAccess || isSaving;
+                        const disabled = role?.isSystem || inheritedAccess || saving.size > 0;
                         return (
                           <div className={`rbac-matrix-row role-matrix-clean-row ${selectedAccess ? "is-active" : ""}`} key={permission._id || permission.key}>
                             <div><div className="rbac-permission-name">{permission.label}</div><div className="small text-secondary font-monospace">{permission.key}</div></div>

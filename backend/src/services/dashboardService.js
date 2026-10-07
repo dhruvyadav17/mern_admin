@@ -11,4 +11,3 @@ const getDashboardStats = async () => {
     return { totalUsers, activeUsers, inactiveUsers, suspendedUsers, adminUsers, roles, recentActivity, userGrowth, roleDistribution };
 };
 module.exports = { getDashboardStats };
-

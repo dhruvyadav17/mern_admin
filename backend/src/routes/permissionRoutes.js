@@ -18,4 +18,3 @@ router.put("/users/:userId", protect, requirePermission("user-permissions.manage
 router.put("/:id", protect, requirePermission("permissions.manage"), updatePermissionValidation, validate, asyncHandler(controller.update));
 router.delete("/:id", protect, requirePermission("permissions.manage"), asyncHandler(controller.remove));
 module.exports = router;
-

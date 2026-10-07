@@ -46,4 +46,3 @@ function MaintenancePage() {
 }
 
 export default App;
-

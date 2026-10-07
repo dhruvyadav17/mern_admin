@@ -8,4 +8,3 @@ router.get("/public", asyncHandler(controller.publicSettings));
 router.get("/", protect, requirePermission("settings.view"), asyncHandler(controller.list));
 router.put("/", protect, requirePermission("settings.manage"), asyncHandler(controller.update));
 module.exports = router;
-

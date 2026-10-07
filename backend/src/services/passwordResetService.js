@@ -29,6 +29,8 @@ const requestReset = async (email) => {
     return { message: genericMessage, resetToken: raw };
 };
 
+const invalidateForUser = (userId) => PasswordResetToken.deleteMany({ userId });
+
 const resetPassword = async (rawToken, password) => {
     if (!rawToken) throw new AppError("Reset token is required", 400);
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
@@ -42,5 +44,4 @@ const resetPassword = async (rawToken, password) => {
     await PasswordResetToken.deleteMany({ userId: user._id });
 };
 
-module.exports = { requestReset, resetPassword };
-
+module.exports = { requestReset, resetPassword, invalidateForUser };

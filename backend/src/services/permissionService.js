@@ -63,7 +63,9 @@ const deletePermission = async (id) => {
 const updateRolePermissions = async (roleId, permissions) => {
     const role = await Role.findById(roleId);
     if (!role) throw new AppError("Role not found", 404);
-    if (role.isSystem && role.name === "admin") return role;
+    if (role.isSystem) {
+        throw new AppError("System role permissions cannot be changed", 400);
+    }
     role.permissions = await sanitize(permissions);
     await role.save();
     return role;
@@ -170,4 +172,3 @@ module.exports = {
     setUserPermission,
     sanitize
 };
-

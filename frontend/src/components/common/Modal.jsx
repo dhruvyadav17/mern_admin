@@ -42,4 +42,3 @@ export default function Modal({ open, title, onClose, children, footer, size = "
     </div>
   );
 }
-

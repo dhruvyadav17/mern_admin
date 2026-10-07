@@ -1,5 +1,6 @@
 const Role = require("../models/Role");
 const AppError = require("./AppError");
+const { getEffectiveRolePermissions } = require("../services/roleService");
 
 const actorHasAllPermissions = (req) => (req.permissions || []).includes("*");
 
@@ -65,6 +66,18 @@ const guardAssignableRoles = async (req, roles) => {
             "You do not have permission to assign protected system roles"
         );
     }
+
+    // The protected baseline `user` role is intentionally assignable without
+    // requiring every baseline user permission. Custom roles must not be used
+    // to give a target permissions the actor does not possess.
+    const grantablePermissions = new Set();
+    for (const role of targetRoles) {
+        if (role.isSystem && role.name === "user") continue;
+        const effective = await getEffectiveRolePermissions(role.name);
+        effective.forEach((permission) => grantablePermissions.add(permission));
+    }
+
+    ensureCanGrantPermissions(req, [...grantablePermissions]);
 };
 
 module.exports = {
@@ -74,4 +87,3 @@ module.exports = {
     guardAssignableRoles,
     normalizeRoles
 };
-

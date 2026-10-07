@@ -14,11 +14,11 @@ const ALWAYS_ALLOWED = new Set([
 const getRequestKey = (req) => `${req.method} ${req.path}`;
 
 const maintenanceMiddleware = async (req, res, next) => {
-    if (!await settingsService.getValue("maintenance.enabled", false)) {
+    if (ALWAYS_ALLOWED.has(getRequestKey(req))) {
         return next();
     }
 
-    if (ALWAYS_ALLOWED.has(getRequestKey(req))) {
+    if (!await settingsService.getValue("maintenance.enabled", false)) {
         return next();
     }
 
@@ -36,4 +36,3 @@ const maintenanceMiddleware = async (req, res, next) => {
 };
 
 module.exports = maintenanceMiddleware;
-

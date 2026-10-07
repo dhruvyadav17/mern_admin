@@ -24,4 +24,3 @@ module.exports = mongoose.model(
     "EmailVerificationToken",
     emailVerificationTokenSchema
 );
-

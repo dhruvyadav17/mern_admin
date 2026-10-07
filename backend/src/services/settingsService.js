@@ -47,4 +47,3 @@ const update = async (updates = {}) => {
     return list();
 };
 module.exports = { list, publicSettings, getValue, update, DEFAULTS, ensureDefaults };
-

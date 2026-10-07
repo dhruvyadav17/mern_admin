@@ -11,4 +11,3 @@ const roleSchema = new mongoose.Schema({
 
 roleSchema.index({ parentRole: 1 });
 module.exports = mongoose.model("Role", roleSchema);
-

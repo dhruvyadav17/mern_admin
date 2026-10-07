@@ -28,4 +28,3 @@ test("ensureCanGrantPermissions rejects permissions the actor does not have", ()
         /cannot grant permissions/
     );
 });
-
