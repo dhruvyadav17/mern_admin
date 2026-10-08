@@ -400,7 +400,7 @@ export default function Roles() {
               }
               disabled={Boolean(
                 edit &&
-                roles.find((role) => role._id === edit)?.name === "admin",
+                roles.find((role) => role._id === edit)?.isSystem,
               )}
             >
               <option value="">No parent role</option>

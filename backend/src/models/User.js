@@ -69,6 +69,8 @@ const userSchema = new mongoose.Schema(
   },
 );
 
+userSchema.index({ createdAt: -1, _id: -1 });
+
 userSchema.pre("save", function () {
   if (!this.roles || !this.roles.length) {
     this.roles = [USER_ROLES.USER];

@@ -1,3 +1,4 @@
+import { useId } from "react";
 import Modal from "./Modal";
 
 export default function FormModal({
@@ -12,7 +13,7 @@ export default function FormModal({
   className = "",
   submitDisabled = false,
 }) {
-  const formId = `admin-form-modal-${title.replace(/\W+/g, "-").toLowerCase() || "form"}`;
+  const formId = `admin-form-modal-${useId().replace(/:/g, "")}`;
 
   return (
     <Modal

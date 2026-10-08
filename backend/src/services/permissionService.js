@@ -43,9 +43,41 @@ const updatePermission = async (id, payload) => {
     permission.action = parsed.action;
     await permission.save();
     if (nextKey !== previousKey) {
-        await Role.updateMany({ permissions: previousKey }, { $set: { "permissions.$": nextKey } });
-        await User.updateMany({ "permissionOverrides.allow": previousKey }, { $set: { "permissionOverrides.allow.$": nextKey } });
-        await User.updateMany({ "permissionOverrides.deny": previousKey }, { $set: { "permissionOverrides.deny.$": nextKey } });
+        const replaceInArray = (fieldPath) => ({
+            $set: {
+                [fieldPath]: {
+                    $setUnion: [
+                        {
+                            $map: {
+                                input: { $ifNull: [`$${fieldPath}`, []] },
+                                as: "permission",
+                                in: {
+                                    $cond: [
+                                        { $eq: ["$$permission", previousKey] },
+                                        nextKey,
+                                        "$$permission",
+                                    ],
+                                },
+                            },
+                        },
+                        [],
+                    ],
+                },
+            },
+        });
+
+        await Role.updateMany(
+            { permissions: previousKey },
+            [replaceInArray("permissions")],
+        );
+        await User.updateMany(
+            { "permissionOverrides.allow": previousKey },
+            [replaceInArray("permissionOverrides.allow")],
+        );
+        await User.updateMany(
+            { "permissionOverrides.deny": previousKey },
+            [replaceInArray("permissionOverrides.deny")],
+        );
     }
     return permission;
 };

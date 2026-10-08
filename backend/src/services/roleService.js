@@ -54,8 +54,15 @@ const updateRole = async (id, payload) => {
     const role = await Role.findById(id);
     if (!role) throw new AppError("Role not found", 404);
     if (role.isSystem && payload.name && payload.name.toLowerCase() !== role.name) throw new AppError("System role name cannot be changed", 400);
-    if (role.name === "admin" && payload.permissions !== undefined) throw new AppError("Admin role permissions cannot be changed", 400);
-    if (role.name === "admin" && payload.parentRole !== undefined && payload.parentRole) throw new AppError("Admin role inheritance cannot be changed", 400);
+    if (role.isSystem && payload.permissions !== undefined) throw new AppError("System role permissions cannot be changed", 400);
+    if (role.isSystem && payload.parentRole !== undefined) {
+        const requestedParent = payload.parentRole
+            ? String(payload.parentRole).trim().toLowerCase()
+            : null;
+        if (requestedParent !== (role.parentRole || null)) {
+            throw new AppError("System role inheritance cannot be changed", 400);
+        }
+    }
     const previousName = role.name;
     if (payload.name) {
         const nextName = payload.name.trim().toLowerCase();

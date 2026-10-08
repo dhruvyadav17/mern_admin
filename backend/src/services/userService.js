@@ -95,7 +95,7 @@ const ensureActiveAdminWillRemain = async (excludedUserIds = []) => {
 
 const getUsers = async ({ page = 1, limit = 10, search = "" }) => {
   const pagination = getPagination(page, limit);
-  const trimmedSearch = String(search || "").trim();
+  const trimmedSearch = String(search || "").trim().slice(0, 100);
   const filter = {};
 
   if (trimmedSearch) {
@@ -108,7 +108,8 @@ const getUsers = async ({ page = 1, limit = 10, search = "" }) => {
 
   const [users, total] = await Promise.all([
     User.find(filter)
-      .sort({ createdAt: -1 })
+      .select("name email roles status createdAt updatedAt")
+      .sort({ createdAt: -1, _id: -1 })
       .skip(pagination.skip)
       .limit(pagination.limit),
     User.countDocuments(filter),

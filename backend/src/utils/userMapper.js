@@ -19,5 +19,15 @@ const toUserResponse = (user, permissions = undefined) => {
     ...(permissions ? { permissions } : {}),
   };
 };
-const toUserListResponse = (users) => users.map(toUserResponse);
+const toUserListResponse = (users) =>
+  users.map((user) => ({
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.roles?.[0],
+    roles: user.roles?.length ? user.roles : [],
+    status: user.status,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  }));
 module.exports = { toUserResponse, toUserListResponse };
