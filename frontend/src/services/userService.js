@@ -26,16 +26,12 @@ const bulkDelete = (userIds) => {
   });
 };
 
-const updateStatus = (id, status) =>
-  api.patch(`/users/${id}/status`, { status });
-
 export default {
   getUsers,
   getUser,
   createUser,
   updateUser,
   deleteUser,
-  updateStatus,
   getActivity,
   exportUsers,
   bulkStatusAction,

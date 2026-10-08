@@ -1,5 +1,6 @@
 const { successResponse } = require("../utils/response");
 const auditService = require("../services/auditService");
+const { csvRow } = require("../utils/csv");
 
 const csv = (rows) => {
   const header = [
@@ -12,8 +13,6 @@ const csv = (rows) => {
     "details",
   ];
 
-  const escapeCsv = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
-
   const data = rows.map((row) => [
     row.createdAt,
     row.actorId?.email || row.actorId?.name || "",
@@ -24,9 +23,7 @@ const csv = (rows) => {
     JSON.stringify(row.details || {}),
   ]);
 
-  return [header, ...data]
-    .map((row) => row.map(escapeCsv).join(","))
-    .join("\n");
+  return [header, ...data].map(csvRow).join("\n");
 };
 
 const list = async (req, res) => {

@@ -21,13 +21,7 @@ const parseDate = (value, endOfDay = false) => {
   return date;
 };
 
-const log = async (
-  req,
-  action,
-  targetType,
-  targetId = null,
-  details = {},
-) => {
+const log = async (req, action, targetType, targetId = null, details = {}) => {
   return AuditLog.create({
     actorId: req?.user?._id || req?.user?.id || null,
     action,
@@ -38,6 +32,16 @@ const log = async (
     userAgent: req?.get?.("user-agent"),
   });
 };
+
+const safeLog = async (...args) => {
+  try {
+    return await log(...args);
+  } catch (error) {
+    console.error("Audit log failed:", error);
+    return null;
+  }
+};
+
 const list = async ({
   page = 1,
   limit = 25,
@@ -137,4 +141,5 @@ const list = async ({
 module.exports = {
   list,
   log,
+  safeLog,
 };

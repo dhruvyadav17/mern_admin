@@ -5,10 +5,12 @@ export const updateRole = (id, data) => api.put(`/roles/${id}`, data);
 export const deleteRole = (id) => api.delete(`/roles/${id}`);
 export const getPermissions = () => api.get("/permissions");
 export const createPermission = (data) => api.post("/permissions", data);
-export const updatePermission = (id, data) => api.put(`/permissions/${id}`, data);
+export const updatePermission = (id, data) =>
+  api.put(`/permissions/${id}`, data);
 export const deletePermission = (id) => api.delete(`/permissions/${id}`);
-export const updateRolePermissions = (id, permissions) => api.put(`/permissions/roles/${id}`, { permissions });
+export const updateRolePermissions = (id, permissions) =>
+  api.put(`/permissions/roles/${id}`, { permissions });
 export const getUserPermissions = (id) => api.get(`/permissions/users/${id}`);
-export const updateUserPermissions = (id, allow, deny) => api.put(`/permissions/users/${id}`, { allow, deny });
-export const updateUserPermission = (id, permission, enabled) => api.patch(`/permissions/users/${id}/permission`, { permission, enabled });
+export const updateUserPermission = (id, permission, enabled) =>
+  api.patch(`/permissions/users/${id}/permission`, { permission, enabled });
 export const getEffectivePermissions = () => api.get("/permissions/me");

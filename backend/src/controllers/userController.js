@@ -2,6 +2,7 @@ const userService = require("../services/userService");
 const { successResponse } = require("../utils/response");
 const { log: audit, safeLog: safeAudit } = require("../services/auditService");
 const User = require("../models/User");
+const { csvRow } = require("../utils/csv");
 
 const {
   assertPermission,
@@ -153,21 +154,32 @@ const bulkDelete = async (req, res) => {
   return successResponse(res, result, "Bulk delete completed successfully");
 };
 const exportUsers = async (req, res) => {
-  const users = await User.find({}).sort({ createdAt: -1 }).lean();
-  const rows = [
-    ["name", "email", "roles", "status", "createdAt"],
-    ...users.map((u) => [
-      u.name,
-      u.email,
-      (u.roles || []).join("|"),
-      u.status,
-      u.createdAt,
-    ]),
-  ];
-  const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", "attachment; filename=users.csv");
-  return res.send(rows.map((r) => r.map(esc).join(",")).join("\n"));
+  res.write("\uFEFF");
+  res.write(`${csvRow(["name", "email", "roles", "status", "createdAt"])}\n`);
+
+  const cursor = User.find({}).sort({ createdAt: -1 }).lean().cursor();
+
+  try {
+    for await (const user of cursor) {
+      const row = csvRow([
+        user.name,
+        user.email,
+        (user.roles || []).join("|"),
+        user.status,
+        user.createdAt,
+      ]);
+
+      if (!res.write(`${row}\n`)) {
+        await new Promise((resolve) => res.once("drain", resolve));
+      }
+    }
+  } finally {
+    await cursor.close();
+  }
+
+  return res.end();
 };
 
 module.exports = {
