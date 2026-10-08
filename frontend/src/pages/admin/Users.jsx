@@ -34,6 +34,12 @@ export default function Users() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [permissionUser, setPermissionUser] = useState(null);
+  const [confirm, setConfirm] = useState({
+    open: false,
+    title: "",
+    message: "",
+    action: null,
+  });
   const [roleFilter, setRoleFilter] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const { can } = usePermission();
@@ -174,15 +180,21 @@ export default function Users() {
     }
   };
 
-  const remove = async (id) => {
-    if (!window.confirm("Delete this user?")) return;
-    try {
-      await userService.deleteUser(id);
-      toast.success("User deleted");
-      await load();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Delete failed");
-    }
+  const remove = (id) => {
+    setConfirm({
+      open: true,
+      title: "Delete user",
+      message: "Are you sure you want to delete this user?",
+      action: async () => {
+        try {
+          await userService.deleteUser(id);
+          toast.success("User deleted");
+          await load();
+        } catch (error) {
+          toast.error(error.response?.data?.message || "Delete failed");
+        }
+      },
+    });
   };
 
   const exportUsers = async () => {
@@ -199,20 +211,7 @@ export default function Users() {
     }
   };
 
-  const handleBulkAction = async () => {
-    if (!selectedUsers.length || !bulkAction) {
-      return;
-    }
-
-    if (
-      bulkAction === "delete" &&
-      !window.confirm(
-        `Are you sure you want to delete ${selectedUsers.length} selected user(s)?`,
-      )
-    ) {
-      return;
-    }
-
+  const executeBulkAction = async () => {
     setBulkLoading(true);
 
     try {
@@ -238,6 +237,21 @@ export default function Users() {
     }
   };
 
+  const handleBulkAction = () => {
+    if (!selectedUsers.length || !bulkAction) return;
+
+    if (bulkAction === "delete") {
+      setConfirm({
+        open: true,
+        title: "Delete selected users",
+        message: `Are you sure you want to delete ${selectedUsers.length} selected user(s)?`,
+        action: executeBulkAction,
+      });
+      return;
+    }
+
+    executeBulkAction();
+  };
   const toggleRole = (name) => {
     if (isSelf) return;
     setForm((current) => {
@@ -266,9 +280,7 @@ export default function Users() {
 
   const selectableUsers = useMemo(
     () =>
-      users.filter(
-        (user) => String(user.id) !== String(currentUser?.id || ""),
-      ),
+      users.filter((user) => String(user.id) !== String(currentUser?.id || "")),
     [users, currentUser?.id],
   );
 
@@ -287,9 +299,7 @@ export default function Users() {
           disabled={!selectableUsers.length || bulkLoading}
           onChange={(e) => {
             setSelectedUsers(
-              e.target.checked
-                ? selectableUsers.map((user) => user.id)
-                : [],
+              e.target.checked ? selectableUsers.map((user) => user.id) : [],
             );
           }}
         />
@@ -300,8 +310,7 @@ export default function Users() {
           className="form-check-input"
           checked={selectedUsers.includes(user.id)}
           disabled={
-            bulkLoading ||
-            String(user.id) === String(currentUser?.id || "")
+            bulkLoading || String(user.id) === String(currentUser?.id || "")
           }
           onChange={(e) => {
             setSelectedUsers((current) =>
@@ -488,229 +497,56 @@ export default function Users() {
       </div>
 
       <Modal
-        open={formOpen}
-        title={editing ? "Edit User" : "Add User"}
-        onClose={close}
-        size="lg"
-        className="user-edit-modal"
+        open={confirm.open}
+        title={confirm.title}
+        onClose={() =>
+          setConfirm({
+            open: false,
+            title: "",
+            message: "",
+            action: null,
+          })
+        }
+        size="sm"
         footer={
-          <div className="user-edit-footer">
-            <div className="small text-secondary">
-              <i className="bi bi-info-circle me-1" />
-              {isSelf
-                ? "Your own role and status are managed separately for safety."
-                : "You can assign multiple roles."}
-            </div>
-            <div className="d-flex gap-2">
-              <button
-                type="button"
-                className="btn btn-light"
-                onClick={close}
-                disabled={saving}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                form="user-form"
-                className="btn btn-primary"
-                disabled={saving}
-              >
-                {saving && (
-                  <span className="spinner-border spinner-border-sm me-2" />
-                )}
-                {editing ? "Update User" : "Create User"}
-              </button>
-            </div>
-          </div>
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() =>
+                setConfirm({
+                  open: false,
+                  title: "",
+                  message: "",
+                  action: null,
+                })
+              }
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={async () => {
+                const action = confirm.action;
+
+                setConfirm({
+                  open: false,
+                  title: "",
+                  message: "",
+                  action: null,
+                });
+
+                await action?.();
+              }}
+            >
+              Confirm
+            </button>
+          </>
         }
       >
-        <form onSubmit={submit} id="user-form">
-          <div className="user-edit-shell">
-            <div className="user-edit-hero">
-              <div className="user-edit-avatar">
-                <i className="bi bi-person-fill" />
-              </div>
-              <div>
-                <h6 className="mb-1">
-                  {editing ? "Update account" : "Create account"}
-                </h6>
-                <p className="mb-0 text-secondary small">
-                  Keep account details and access settings clear and separate.
-                </p>
-              </div>
-            </div>
-
-            <div className="user-edit-section">
-              <div className="user-edit-section-title">
-                <i className="bi bi-person-circle me-2" />
-                Account details
-              </div>
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <label className="form-label">Full name</label>
-                  <input
-                    className="form-control"
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="e.g. Dhruv Yadav"
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label">Email address</label>
-                  <input
-                    className="form-control"
-                    type="email"
-                    required
-                    value={form.email}
-                    onChange={(e) =>
-                      setForm({ ...form, email: e.target.value })
-                    }
-                    placeholder="name@example.com"
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label">
-                    {editing ? "New password" : "Password"}{" "}
-                    <small className="text-secondary">
-                      {editing ? "(optional)" : ""}
-                    </small>
-                  </label>
-                  <input
-                    className="form-control"
-                    type="password"
-                    required={!editing}
-                    minLength={8}
-                    value={form.password}
-                    onChange={(e) =>
-                      setForm({ ...form, password: e.target.value })
-                    }
-                    placeholder={
-                      editing
-                        ? "Leave blank to keep current"
-                        : "Minimum 8 characters"
-                    }
-                  />
-                </div>
-                {canStatus && (
-                  <div className="col-md-6">
-                    <label className="form-label">Status</label>
-                    <select
-                      className="form-select"
-                      disabled={isSelf}
-                      value={form.status}
-                      onChange={(e) =>
-                        setForm({ ...form, status: e.target.value })
-                      }
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="suspended">Suspended</option>
-                    </select>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {canAssign && (
-              <div className="user-edit-section mt-3">
-                <div className="d-flex align-items-center justify-content-between gap-3 mb-3">
-                  <div>
-                    <div className="rbac-form-section-title mb-1">
-                      <i className="bi bi-diagram-3 me-2" />
-                      Roles & access
-                    </div>
-                    <div className="small text-secondary">
-                      Select one or more roles. Existing roles are automatically
-                      selected when editing.
-                    </div>
-                  </div>
-                  <span className="rbac-count-badge">
-                    {form.roles.length} selected
-                  </span>
-                </div>
-                {isSelf && (
-                  <div className="alert alert-info py-2 small">
-                    <i className="bi bi-lock me-2" />
-                    Role changes for your own account are disabled here. Use
-                    your profile/account settings instead.
-                  </div>
-                )}
-                <div className="input-group mb-3">
-                  <span className="input-group-text">
-                    <i className="bi bi-search" />
-                  </span>
-                  <input
-                    className="form-control"
-                    placeholder="Search roles"
-                    value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
-                    disabled={isSelf}
-                  />
-                </div>
-                <div className="role-selection-grid">
-                  {visibleRoles.map((role) => {
-                    const selected = form.roles.includes(role.name);
-                    return (
-                      <label
-                        key={role._id}
-                        className={`role-selection-card ${selected ? "is-selected" : ""} ${isSelf ? "is-disabled" : ""}`}
-                      >
-                        <input
-                          type="checkbox"
-                          className="form-check-input"
-                          checked={selected}
-                          disabled={isSelf}
-                          onChange={() => toggleRole(role.name)}
-                        />
-                        <span className="role-selection-icon">
-                          <i
-                            className={`bi ${role.isSystem ? "bi-shield-fill-check" : "bi-person-badge"}`}
-                          />
-                        </span>
-                        <span className="min-w-0">
-                          <strong className="d-block">{role.label}</strong>
-                          <small className="text-secondary d-block font-monospace">
-                            {role.name}
-                          </small>
-                          {role.description && (
-                            <small className="text-secondary d-block text-truncate">
-                              {role.description}
-                            </small>
-                          )}
-                        </span>
-                        {selected && (
-                          <i className="bi bi-check-circle-fill ms-auto text-primary" />
-                        )}
-                      </label>
-                    );
-                  })}
-                </div>
-                {!visibleRoles.length && (
-                  <div className="empty-rbac-state py-4">
-                    No matching roles.
-                  </div>
-                )}
-                {selectedRoleObjects.length > 0 && (
-                  <div className="selected-role-summary">
-                    <span className="small text-secondary">Selected roles</span>
-                    <div className="d-flex flex-wrap gap-2">
-                      {selectedRoleObjects.map((role, index) => (
-                        <span className="rbac-role-chip" key={role._id}>
-                          {index === 0 && (
-                            <i className="bi bi-star-fill me-1" />
-                          )}
-                          {role.label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </form>
+        <p className="mb-0">{confirm.message}</p>
       </Modal>
 
       <UserPermissionsModal

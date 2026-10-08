@@ -8,4 +8,20 @@ import { AuthProvider } from "./context/AuthContext";
 import { PermissionProvider } from "./context/PermissionContext";
 import { BrowserRouter } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-ReactDOM.createRoot(document.getElementById("root")).render(<React.StrictMode><BrowserRouter><AuthProvider><PermissionProvider><App /></PermissionProvider><Toaster position="top-right" /></AuthProvider></BrowserRouter></React.StrictMode>);
+import ErrorBoundary from "./components/common/ErrorBoundary";
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <BrowserRouter>
+    
+      <AuthProvider>
+        <PermissionProvider>
+          <ErrorBoundary>
+          <App />
+          </ErrorBoundary>
+        </PermissionProvider>
+        <Toaster position="top-right" />
+      </AuthProvider>
+      
+    </BrowserRouter>
+  </React.StrictMode>,
+);

@@ -26,7 +26,12 @@ export default function Permissions() {
   const [form, setForm] = useState(blank);
   const [saving, setSaving] = useState(false);
   const showError = useToastError();
-
+  const [confirm, setConfirm] = useState({
+    open: false,
+    title: "",
+    message: "",
+    action: null,
+  });
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -107,15 +112,21 @@ export default function Permissions() {
     }
   };
 
-  const remove = async (permission) => {
-    if (!window.confirm(`Delete permission ${permission.key}?`)) return;
-    try {
-      await deletePermission(permission._id);
-      toast.success("Permission deleted");
-      await load();
-    } catch (error) {
-      showError(error, "Unable to delete permission");
-    }
+  const remove = (permission) => {
+    setConfirm({
+      open: true,
+      title: "Delete permission",
+      message: `Are you sure you want to delete permission "${permission.key}"?`,
+      action: async () => {
+        try {
+          await deletePermission(permission._id);
+          toast.success("Permission deleted");
+          await load();
+        } catch (error) {
+          showError(error, "Unable to delete permission");
+        }
+      },
+    });
   };
 
   const columns = [
@@ -125,7 +136,9 @@ export default function Permissions() {
       render: (permission) => (
         <div>
           <strong>{permission.label}</strong>
-          <div className="small text-secondary font-monospace">{permission.key}</div>
+          <div className="small text-secondary font-monospace">
+            {permission.key}
+          </div>
         </div>
       ),
     },
@@ -133,7 +146,9 @@ export default function Permissions() {
       key: "group",
       label: "Group",
       render: (permission) => (
-        <span className="badge rounded-pill text-bg-light">{permission.group || "Other"}</span>
+        <span className="badge rounded-pill text-bg-light">
+          {permission.group || "Other"}
+        </span>
       ),
     },
     {
@@ -193,7 +208,9 @@ export default function Permissions() {
         <div className="card-header d-flex flex-wrap gap-2 align-items-center">
           <div className="me-auto">
             <h3 className="card-title mb-0">Permissions</h3>
-            <div className="small text-secondary">{filtered.length} permissions</div>
+            <div className="small text-secondary">
+              {filtered.length} permissions
+            </div>
           </div>
           <div className="input-group permission-search-box">
             <span className="input-group-text">
@@ -235,67 +252,56 @@ export default function Permissions() {
       </div>
 
       <Modal
-        open={open}
-        title={edit ? "Edit Permission" : "Add Permission"}
-        onClose={close}
+        open={confirm.open}
+        title={confirm.title}
+        onClose={() =>
+          setConfirm({
+            open: false,
+            title: "",
+            message: "",
+            action: null,
+          })
+        }
+        size="sm"
         footer={
           <>
-            <button className="btn btn-light" onClick={close} disabled={saving}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() =>
+                setConfirm({
+                  open: false,
+                  title: "",
+                  message: "",
+                  action: null,
+                })
+              }
+            >
               Cancel
             </button>
-            <button className="btn btn-primary" onClick={save} disabled={saving}>
-              {saving && <span className="spinner-border spinner-border-sm me-2" />}
-              {edit ? "Update Permission" : "Create Permission"}
+
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={async () => {
+                const action = confirm.action;
+
+                setConfirm({
+                  open: false,
+                  title: "",
+                  message: "",
+                  action: null,
+                });
+
+                await action?.();
+              }}
+            >
+              Confirm
             </button>
           </>
         }
       >
-        <form onSubmit={save}>
-          <div className="row g-3">
-            <div className="col-md-6">
-              <label className="form-label">Permission key</label>
-              <input
-                className="form-control"
-                required
-                disabled={Boolean(edit?.isSystem)}
-                value={form.key}
-                onChange={(event) => setForm({ ...form, key: event.target.value })}
-                placeholder="users.view"
-              />
-            </div>
-            <div className="col-md-6">
-              <label className="form-label">Display name</label>
-              <input
-                className="form-control"
-                required
-                value={form.label}
-                onChange={(event) => setForm({ ...form, label: event.target.value })}
-                placeholder="View users"
-              />
-            </div>
-            <div className="col-md-6">
-              <label className="form-label">Group</label>
-              <input
-                className="form-control"
-                required
-                value={form.group}
-                onChange={(event) => setForm({ ...form, group: event.target.value })}
-                placeholder="Users"
-              />
-            </div>
-            <div className="col-md-6">
-              <label className="form-label">Description</label>
-              <input
-                className="form-control"
-                value={form.description}
-                onChange={(event) =>
-                  setForm({ ...form, description: event.target.value })
-                }
-                placeholder="What this permission allows"
-              />
-            </div>
-          </div>
-        </form>
+        <p className="mb-0">{confirm.message}</p>
       </Modal>
     </>
   );

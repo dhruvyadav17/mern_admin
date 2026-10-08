@@ -31,6 +31,13 @@ export default function Roles() {
   const [savingPermission, setSavingPermission] = useState(false);
   const limit = 8;
 
+  const [confirm, setConfirm] = useState({
+    open: false,
+    title: "",
+    message: "",
+    action: null,
+  });
+
   const load = async () => {
     setLoading(true);
     try {
@@ -109,15 +116,21 @@ export default function Roles() {
     }
   };
 
-  const remove = async (role) => {
-    if (!window.confirm(`Delete role ${role.label}?`)) return;
-    try {
-      await deleteRole(role._id);
-      toast.success("Role deleted");
-      load();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Cannot delete role");
-    }
+  const remove = (role) => {
+    setConfirm({
+      open: true,
+      title: "Delete role",
+      message: `Are you sure you want to delete role "${role.label}"?`,
+      action: async () => {
+        try {
+          await deleteRole(role._id);
+          toast.success("Role deleted");
+          await load();
+        } catch (error) {
+          toast.error(error.response?.data?.message || "Cannot delete role");
+        }
+      },
+    });
   };
 
   const openPermissions = (role) => {
@@ -126,7 +139,7 @@ export default function Roles() {
   };
 
   const persistPermissionChange = async (next, previous = checked) => {
-    if (!assignRole || assignRole.isSystem  || savingPermission) return;
+    if (!assignRole || assignRole.isSystem || savingPermission) return;
     setChecked(next);
     setRoles((current) =>
       current.map((role) =>
@@ -321,83 +334,56 @@ export default function Roles() {
       </div>
 
       <Modal
-        open={open}
-        title={edit ? "Edit Role" : "Add Role"}
-        onClose={closeForm}
+        open={confirm.open}
+        title={confirm.title}
+        onClose={() =>
+          setConfirm({
+            open: false,
+            title: "",
+            message: "",
+            action: null,
+          })
+        }
+        size="sm"
         footer={
           <>
-            <button className="btn btn-light" onClick={closeForm}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() =>
+                setConfirm({
+                  open: false,
+                  title: "",
+                  message: "",
+                  action: null,
+                })
+              }
+            >
               Cancel
             </button>
-            <button className="btn btn-primary" onClick={saveRole}>
-              {edit ? "Update Role" : "Create Role"}
+
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={async () => {
+                const action = confirm.action;
+
+                setConfirm({
+                  open: false,
+                  title: "",
+                  message: "",
+                  action: null,
+                });
+
+                await action?.();
+              }}
+            >
+              Confirm
             </button>
           </>
         }
       >
-        <form onSubmit={saveRole}>
-          <div className="rbac-form-section">
-            <div className="rbac-form-section-title">
-              <i className="bi bi-shield me-2" />
-              Role details
-            </div>
-            <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label">Role key</label>
-                <input
-                  className="form-control"
-                  required
-                  disabled={Boolean(
-                    edit && roles.find((role) => role._id === edit)?.isSystem,
-                  )}
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g. manager"
-                />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Display name</label>
-                <input
-                  className="form-control"
-                  required
-                  value={form.label}
-                  onChange={(e) => setForm({ ...form, label: e.target.value })}
-                  placeholder="Manager"
-                />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Parent role</label>
-                <select
-                  className="form-select"
-                  value={form.parentRole}
-                  onChange={(e) =>
-                    setForm({ ...form, parentRole: e.target.value })
-                  }
-                >
-                  <option value="">No parent</option>
-                  {roles
-                    .filter((role) => role._id !== edit)
-                    .map((role) => (
-                      <option key={role._id} value={role.name}>
-                        {role.label}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Description</label>
-                <input
-                  className="form-control"
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                  placeholder="What is this role for?"
-                />
-              </div>
-            </div>
-          </div>
-        </form>
+        <p className="mb-0">{confirm.message}</p>
       </Modal>
 
       <Modal
