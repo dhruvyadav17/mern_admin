@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
-import Modal from "../../components/common/Modal";
+import FormModal from "../../components/common/FormModal";
+import ConfirmModal from "../../components/common/ConfirmModal";
 import Pagination from "../../components/common/Pagination";
 import { Can } from "../../context/PermissionContext";
 import useClientPagination from "../../hooks/useClientPagination";
@@ -251,58 +252,100 @@ export default function Permissions() {
         </div>
       </div>
 
-      <Modal
+      <FormModal
+        open={open}
+        title={edit ? "Edit permission" : "Add permission"}
+        onClose={close}
+        onSubmit={save}
+        submitLabel={edit ? "Update permission" : "Create permission"}
+        size="lg"
+      >
+        <div className="row g-3">
+          <div className="col-md-6">
+            <label className="form-label" htmlFor="permission-key">
+              Permission key
+            </label>
+            <input
+              id="permission-key"
+              className="form-control font-monospace"
+              value={form.key}
+              onChange={(event) =>
+                setForm({ ...form, key: event.target.value.toLowerCase() })
+              }
+              placeholder="users.view"
+              pattern="[a-z0-9]+(?:[._-][a-z0-9]+)*"
+              required
+              disabled={Boolean(edit?.isSystem)}
+              autoFocus
+            />
+            <div className="form-text">
+              Example: users.view or reports.export
+            </div>
+          </div>
+          <div className="col-md-6">
+            <label className="form-label" htmlFor="permission-label">
+              Display name
+            </label>
+            <input
+              id="permission-label"
+              className="form-control"
+              value={form.label}
+              onChange={(event) =>
+                setForm({ ...form, label: event.target.value })
+              }
+              placeholder="View users"
+              maxLength={100}
+              required
+            />
+          </div>
+          <div className="col-md-6">
+            <label className="form-label" htmlFor="permission-group">
+              Group
+            </label>
+            <input
+              id="permission-group"
+              className="form-control"
+              value={form.group}
+              onChange={(event) =>
+                setForm({ ...form, group: event.target.value })
+              }
+              placeholder="Users"
+              maxLength={100}
+              required
+            />
+          </div>
+          <div className="col-12">
+            <label className="form-label" htmlFor="permission-description">
+              Description
+            </label>
+            <textarea
+              id="permission-description"
+              className="form-control"
+              rows="4"
+              value={form.description}
+              onChange={(event) =>
+                setForm({ ...form, description: event.target.value })
+              }
+              placeholder="Describe what this permission allows."
+              maxLength={500}
+            />
+          </div>
+        </div>
+      </FormModal>
+
+      <ConfirmModal
         open={confirm.open}
         title={confirm.title}
+        message={confirm.message}
         onClose={() =>
-          setConfirm({
-            open: false,
-            title: "",
-            message: "",
-            action: null,
-          })
+          setConfirm({ open: false, title: "", message: "", action: null })
         }
-        size="sm"
-        footer={
-          <>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() =>
-                setConfirm({
-                  open: false,
-                  title: "",
-                  message: "",
-                  action: null,
-                })
-              }
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-danger"
-              onClick={async () => {
-                const action = confirm.action;
-
-                setConfirm({
-                  open: false,
-                  title: "",
-                  message: "",
-                  action: null,
-                });
-
-                await action?.();
-              }}
-            >
-              Confirm
-            </button>
-          </>
-        }
-      >
-        <p className="mb-0">{confirm.message}</p>
-      </Modal>
+        onConfirm={async () => {
+          const action = confirm.action;
+          setConfirm({ open: false, title: "", message: "", action: null });
+          await action?.();
+        }}
+      />
     </>
   );
 }

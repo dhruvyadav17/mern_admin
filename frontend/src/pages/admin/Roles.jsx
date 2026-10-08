@@ -4,6 +4,8 @@ import PageHeader from "../../components/common/PageHeader";
 import Pagination from "../../components/common/Pagination";
 import PermissionToggle from "../../components/common/PermissionToggle";
 import Modal from "../../components/common/Modal";
+import FormModal from "../../components/common/FormModal";
+import ConfirmModal from "../../components/common/ConfirmModal";
 import {
   createRole,
   deleteRole,
@@ -29,6 +31,7 @@ export default function Roles() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [savingPermission, setSavingPermission] = useState(false);
+  const [saving, setSaving] = useState(false);
   const limit = 8;
 
   const [confirm, setConfirm] = useState({
@@ -104,15 +107,19 @@ export default function Roles() {
 
   const saveRole = async (event) => {
     event?.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
       const payload = { ...form, parentRole: form.parentRole || null };
       if (edit) await updateRole(edit, payload);
       else await createRole(payload);
       toast.success(edit ? "Role updated" : "Role created");
       closeForm();
-      load();
+      await load();
     } catch (error) {
       toast.error(error.response?.data?.message || "Operation failed");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -333,58 +340,114 @@ export default function Roles() {
         </div>
       </div>
 
-      <Modal
+      <FormModal
+        open={open}
+        title={edit ? "Edit role" : "Add role"}
+        onClose={closeForm}
+        onSubmit={saveRole}
+        submitLabel={edit ? "Update role" : "Create role"}
+        saving={saving}
+        size="lg"
+      >
+        <div className="row g-3">
+          <div className="col-md-6">
+            <label className="form-label" htmlFor="role-name">
+              Role name
+            </label>
+            <input
+              id="role-name"
+              className="form-control font-monospace"
+              value={form.name}
+              onChange={(event) =>
+                setForm({ ...form, name: event.target.value })
+              }
+              placeholder="manager"
+              pattern="[a-z0-9._-]+"
+              required
+              disabled={Boolean(
+                edit && roles.find((role) => role._id === edit)?.isSystem,
+              )}
+              autoFocus
+            />
+            <div className="form-text">Lowercase key used by RBAC.</div>
+          </div>
+          <div className="col-md-6">
+            <label className="form-label" htmlFor="role-label">
+              Display name
+            </label>
+            <input
+              id="role-label"
+              className="form-control"
+              value={form.label}
+              onChange={(event) =>
+                setForm({ ...form, label: event.target.value })
+              }
+              placeholder="Manager"
+              maxLength={100}
+              required
+            />
+          </div>
+          <div className="col-12">
+            <label className="form-label" htmlFor="role-parent">
+              Parent role
+            </label>
+            <select
+              id="role-parent"
+              className="form-select"
+              value={form.parentRole}
+              onChange={(event) =>
+                setForm({ ...form, parentRole: event.target.value })
+              }
+              disabled={Boolean(
+                edit &&
+                roles.find((role) => role._id === edit)?.name === "admin",
+              )}
+            >
+              <option value="">No parent role</option>
+              {roles
+                .filter((role) => role.name !== form.name)
+                .map((role) => (
+                  <option key={role._id} value={role.name}>
+                    {role.label || role.name}
+                  </option>
+                ))}
+            </select>
+            <div className="form-text">
+              Inherited permissions are added automatically.
+            </div>
+          </div>
+          <div className="col-12">
+            <label className="form-label" htmlFor="role-description">
+              Description
+            </label>
+            <textarea
+              id="role-description"
+              className="form-control"
+              rows="4"
+              value={form.description}
+              onChange={(event) =>
+                setForm({ ...form, description: event.target.value })
+              }
+              placeholder="Describe what this role is intended for."
+              maxLength={500}
+            />
+          </div>
+        </div>
+      </FormModal>
+
+      <ConfirmModal
         open={confirm.open}
         title={confirm.title}
+        message={confirm.message}
         onClose={() =>
-          setConfirm({
-            open: false,
-            title: "",
-            message: "",
-            action: null,
-          })
+          setConfirm({ open: false, title: "", message: "", action: null })
         }
-        size="sm"
-        footer={
-          <>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() =>
-                setConfirm({
-                  open: false,
-                  title: "",
-                  message: "",
-                  action: null,
-                })
-              }
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-danger"
-              onClick={async () => {
-                const action = confirm.action;
-
-                setConfirm({
-                  open: false,
-                  title: "",
-                  message: "",
-                  action: null,
-                });
-
-                await action?.();
-              }}
-            >
-              Confirm
-            </button>
-          </>
-        }
-      >
-        <p className="mb-0">{confirm.message}</p>
-      </Modal>
+        onConfirm={async () => {
+          const action = confirm.action;
+          setConfirm({ open: false, title: "", message: "", action: null });
+          await action?.();
+        }}
+      />
 
       <Modal
         open={Boolean(assignRole)}
@@ -424,7 +487,7 @@ export default function Roles() {
             </span>
           )}
         </div>
-        {assignRole?.name === "admin" && (
+        {assignRole?.isSystem && (
           <div className="alert alert-warning d-flex align-items-center gap-2">
             <i className="bi bi-shield-lock-fill" />
             <span>
@@ -436,8 +499,7 @@ export default function Roles() {
         <div className="permission-assignment-list">
           {Object.entries(grouped).map(([group, items]) => {
             const allSelected = items.every(
-              (item) =>
-                checked.includes(item.key) || assignRole?.name === "admin",
+              (item) => checked.includes(item.key) || assignRole?.isSystem,
             );
             return (
               <section className="permission-group" key={group}>
@@ -448,7 +510,7 @@ export default function Roles() {
                       {items.length} permissions
                     </div>
                   </div>
-                  {assignRole?.name !== "admin" && (
+                  {!assignRole?.isSystem && (
                     <button
                       type="button"
                       className="btn btn-sm btn-outline-secondary"
@@ -463,8 +525,7 @@ export default function Roles() {
                 <div className="permission-grid">
                   {items.map((permission) => {
                     const selected =
-                      assignRole?.name === "admin" ||
-                      checked.includes(permission.key);
+                      assignRole?.isSystem || checked.includes(permission.key);
                     return (
                       <div
                         className={`permission-card ${selected ? "is-checked" : ""}`}
@@ -472,7 +533,7 @@ export default function Roles() {
                       >
                         <PermissionToggle
                           checked={selected}
-                          disabled={assignRole?.name === "admin"}
+                          disabled={assignRole?.isSystem}
                           saving={savingPermission}
                           onChange={() => togglePermission(permission.key)}
                           label={`Allow ${permission.label}`}

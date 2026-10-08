@@ -4,7 +4,8 @@ import toast from "react-hot-toast";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import Pagination from "../../components/common/Pagination";
-import Modal from "../../components/common/Modal";
+import FormModal from "../../components/common/FormModal";
+import ConfirmModal from "../../components/common/ConfirmModal";
 import userService from "../../services/userService";
 import { getRoles } from "../../services/roleService";
 import { Can, usePermission } from "../../context/PermissionContext";
@@ -496,58 +497,169 @@ export default function Users() {
         </div>
       </div>
 
-      <Modal
+      <FormModal
+        open={formOpen}
+        title={editing ? "Edit user" : "Add user"}
+        onClose={close}
+        onSubmit={submit}
+        saving={saving}
+        submitLabel={editing ? "Update user" : "Create user"}
+        size="xl"
+        className="user-edit-modal"
+      >
+        <div className="user-edit-shell">
+          <div className="user-edit-hero">
+            <div className="user-edit-avatar">
+              <i className={`bi ${editing ? "bi-person-gear" : "bi-person-plus"}`} />
+            </div>
+            <div className="min-w-0">
+              <h5 className="mb-1">{editing ? "Update account" : "Create a new account"}</h5>
+              <div className="small text-secondary">
+                {editing
+                  ? "Update profile details, roles and account status. Leave password blank to keep the current password."
+                  : "Add the profile details and assign one or more roles."}
+              </div>
+            </div>
+          </div>
+
+          <section className="user-edit-section">
+            <div className="user-edit-section-title">
+              <i className="bi bi-person-vcard" />
+              Account details
+            </div>
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label" htmlFor="user-name">Name</label>
+                <input
+                  id="user-name"
+                  className="form-control"
+                  value={form.name}
+                  onChange={(event) => setForm({ ...form, name: event.target.value })}
+                  maxLength={100}
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label" htmlFor="user-email">Email</label>
+                <input
+                  id="user-email"
+                  className="form-control"
+                  type="email"
+                  value={form.email}
+                  onChange={(event) => setForm({ ...form, email: event.target.value })}
+                  required
+                />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label" htmlFor="user-password">
+                  Password {editing && <span className="text-secondary fw-normal">(optional)</span>}
+                </label>
+                <input
+                  id="user-password"
+                  className="form-control"
+                  type="password"
+                  value={form.password}
+                  onChange={(event) => setForm({ ...form, password: event.target.value })}
+                  minLength={8}
+                  required={!editing}
+                  autoComplete={editing ? "new-password" : "new-password"}
+                />
+                <div className="form-text">
+                  {editing ? "Leave blank to keep the existing password." : "Use at least 8 characters."}
+                </div>
+              </div>
+              {canStatus && (
+                <div className="col-md-6">
+                  <label className="form-label" htmlFor="user-status">Status</label>
+                  <select
+                    id="user-status"
+                    className="form-select"
+                    value={form.status}
+                    onChange={(event) => setForm({ ...form, status: event.target.value })}
+                    disabled={isSelf}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                  {isSelf && <div className="form-text">You cannot change your own status.</div>}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {canAssign && (
+            <section className="user-edit-section">
+              <div className="user-edit-section-title">
+                <i className="bi bi-shield-check" />
+                Roles
+                <span className="badge rounded-pill text-bg-light ms-auto">{form.roles.length} selected</span>
+              </div>
+              <div className="input-group mb-3">
+                <span className="input-group-text"><i className="bi bi-search" /></span>
+                <input
+                  className="form-control"
+                  placeholder="Search roles"
+                  value={roleFilter}
+                  onChange={(event) => setRoleFilter(event.target.value)}
+                  disabled={isSelf}
+                />
+              </div>
+              {selectedRoleObjects.length > 0 && (
+                <div className="d-flex flex-wrap gap-2 mb-3">
+                  {selectedRoleObjects.map((role) => (
+                    <span className="rbac-role-chip" key={role.name}>
+                      <i className="bi bi-shield-check me-1" />{role.label || role.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="role-selection-grid">
+                {visibleRoles.map((role) => {
+                  const selected = form.roles.includes(role.name);
+                  const disabled = isSelf;
+                  return (
+                    <label
+                      key={role._id || role.name}
+                      className={`role-selection-card ${selected ? "is-selected" : ""} ${disabled ? "is-disabled" : ""}`}
+                    >
+                      <span className="role-selection-icon">
+                        <i className={`bi ${selected ? "bi-check-lg" : "bi-shield"}`} />
+                      </span>
+                      <span className="min-w-0 flex-grow-1">
+                        <strong className="d-block text-truncate">{role.label || role.name}</strong>
+                        <span className="small text-secondary text-truncate d-block">{role.description || role.name}</span>
+                      </span>
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleRole(role.name)}
+                        disabled={disabled}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+              {!visibleRoles.length && <div className="text-secondary small mt-2">No matching roles.</div>}
+              {isSelf && <div className="form-text mt-2">You cannot change your own roles.</div>}
+            </section>
+          )}
+        </div>
+      </FormModal>
+
+      <ConfirmModal
         open={confirm.open}
         title={confirm.title}
-        onClose={() =>
-          setConfirm({
-            open: false,
-            title: "",
-            message: "",
-            action: null,
-          })
-        }
-        size="sm"
-        footer={
-          <>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() =>
-                setConfirm({
-                  open: false,
-                  title: "",
-                  message: "",
-                  action: null,
-                })
-              }
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-danger"
-              onClick={async () => {
-                const action = confirm.action;
-
-                setConfirm({
-                  open: false,
-                  title: "",
-                  message: "",
-                  action: null,
-                });
-
-                await action?.();
-              }}
-            >
-              Confirm
-            </button>
-          </>
-        }
-      >
-        <p className="mb-0">{confirm.message}</p>
-      </Modal>
+        message={confirm.message}
+        onClose={() => setConfirm({ open: false, title: "", message: "", action: null })}
+        onConfirm={async () => {
+          const action = confirm.action;
+          setConfirm({ open: false, title: "", message: "", action: null });
+          await action?.();
+        }}
+      />
 
       <UserPermissionsModal
         user={permissionUser}
